@@ -83,8 +83,9 @@ public class VentasController : ControllerBase
                     d.GananciaBruta
                 }).ToList(),
 
-                GananciaBruta = v.DetalleVenta
-                    .Sum(d => (decimal?)d.GananciaBruta) ?? 0
+                GananciaBruta =
+                    v.DetalleVenta
+                        .Sum(d => (decimal?)d.GananciaBruta) ?? 0
             })
             .FirstOrDefaultAsync();
 
@@ -113,7 +114,17 @@ public class VentasController : ControllerBase
         {
             return BadRequest(new
             {
-                mensaje = "La venta debe contener al menos un producto."
+                mensaje =
+                    "La venta debe contener al menos un producto."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.MetodoPago))
+        {
+            return BadRequest(new
+            {
+                mensaje =
+                    "El método de pago es obligatorio."
             });
         }
 
@@ -126,11 +137,12 @@ public class VentasController : ControllerBase
         {
             return BadRequest(new
             {
-                mensaje = "Método de pago inválido."
+                mensaje =
+                    "Método de pago inválido."
             });
         }
 
-        // Agrupar por si el mismo producto llega repetido.
+        // Agrupar si el mismo producto viene repetido.
         var items = request.Productos
             .GroupBy(x => x.IdProducto)
             .Select(g => new
@@ -144,7 +156,8 @@ public class VentasController : ControllerBase
         {
             return BadRequest(new
             {
-                mensaje = "Las cantidades deben ser mayores a cero."
+                mensaje =
+                    "Las cantidades deben ser mayores a cero."
             });
         }
 
@@ -153,31 +166,42 @@ public class VentasController : ControllerBase
             .ToList();
 
         var productos = await _context.Productos
-            .Where(p => idsProductos.Contains(p.IdProducto))
+            .Where(p =>
+                idsProductos.Contains(p.IdProducto))
             .ToListAsync();
 
-        // Validar que todos existan.
+        // =====================================================
+        // VALIDAR PRODUCTOS
+        // =====================================================
+
         if (productos.Count != idsProductos.Count)
         {
-            var encontrados = productos
-                .Select(p => p.IdProducto);
+            var encontrados =
+                productos.Select(p => p.IdProducto);
 
-            var faltantes = idsProductos
-                .Except(encontrados)
-                .ToList();
+            var faltantes =
+                idsProductos
+                    .Except(encontrados)
+                    .ToList();
 
             return BadRequest(new
             {
-                mensaje = "Uno o más productos no existen.",
+                mensaje =
+                    "Uno o más productos no existen.",
+
                 productos = faltantes
             });
         }
 
-        // Validar stock.
+        // =====================================================
+        // VALIDAR STOCK
+        // =====================================================
+
         foreach (var item in items)
         {
             var producto = productos
-                .Single(p => p.IdProducto == item.IdProducto);
+                .Single(p =>
+                    p.IdProducto == item.IdProducto);
 
             if (!producto.Activo)
             {
@@ -196,76 +220,107 @@ public class VentasController : ControllerBase
                         $"Inventario insuficiente para '{producto.Nombre}'.",
 
                     solicitado = item.Cantidad,
-                    disponible = producto.StockActual
+
+                    disponible =
+                        producto.StockActual
                 });
             }
         }
 
         await using var transaction =
-            await _context.Database.BeginTransactionAsync();
+            await _context.Database
+                .BeginTransactionAsync();
 
         try
         {
+            // =================================================
+            // CALCULAR TOTAL DE LA VENTA
+            // =================================================
+
             decimal totalVenta = 0;
 
             foreach (var item in items)
             {
                 var producto = productos
                     .Single(p =>
-                        p.IdProducto == item.IdProducto);
+                        p.IdProducto ==
+                        item.IdProducto);
 
                 totalVenta +=
-                    producto.PrecioVenta * item.Cantidad;
+                    producto.PrecioVenta *
+                    item.Cantidad;
             }
+
+            // =================================================
+            // CREAR ENCABEZADO
+            // =================================================
 
             var venta = new Venta
             {
                 FechaVenta = DateTime.Now,
-                MetodoPago = metodoPago,
-                TotalVenta = totalVenta,
-                Estado = "COMPLETADA"
+
+                MetodoPago =
+                    metodoPago,
+
+                TotalVenta =
+                    totalVenta,
+
+                Estado =
+                    "COMPLETADA"
             };
 
             _context.Ventas.Add(venta);
 
-            // Guardamos para obtener IdVenta Identity.
+            // Necesitamos el Identity IdVenta.
             await _context.SaveChangesAsync();
+
+            // =================================================
+            // DETALLE + INVENTARIO
+            // =================================================
 
             foreach (var item in items)
             {
                 var producto = productos
                     .Single(p =>
-                        p.IdProducto == item.IdProducto);
+                        p.IdProducto ==
+                        item.IdProducto);
 
-                decimal subtotal =
-                    producto.PrecioVenta *
-                    item.Cantidad;
-
-                decimal costoTotal =
-                    producto.CostoActual *
-                    item.Cantidad;
-
-                decimal gananciaBruta =
-                    subtotal - costoTotal;
+                /*
+                 * IMPORTANTE:
+                 *
+                 * Subtotal
+                 * CostoTotal
+                 * GananciaBruta
+                 *
+                 * NO SE ASIGNAN.
+                 *
+                 * SQL Server las calcula automáticamente.
+                 */
 
                 var detalle = new DetalleVentum
                 {
-                    IdVenta = venta.IdVenta,
-                    IdProducto = producto.IdProducto,
-                    Cantidad = item.Cantidad,
+                    IdVenta =
+                        venta.IdVenta,
+
+                    IdProducto =
+                        producto.IdProducto,
+
+                    Cantidad =
+                        item.Cantidad,
 
                     PrecioUnitario =
                         producto.PrecioVenta,
 
                     CostoUnitario =
-                        producto.CostoActual,
-
-                    Subtotal = subtotal,
-                    CostoTotal = costoTotal,
-                    GananciaBruta = gananciaBruta
+                        producto.CostoActual
                 };
 
-                _context.DetalleVenta.Add(detalle);
+                _context.DetalleVenta
+                    .Add(detalle);
+
+                // =============================================
+                // MOVIMIENTO DE INVENTARIO
+                // =============================================
 
                 var movimiento =
                     new MovimientoInventario
@@ -292,6 +347,10 @@ public class VentasController : ControllerBase
                 _context.MovimientoInventarios
                     .Add(movimiento);
 
+                // =============================================
+                // DESCONTAR STOCK
+                // =============================================
+
                 producto.StockActual -=
                     item.Cantidad;
             }
@@ -317,12 +376,14 @@ public class VentasController : ControllerBase
                 totalVenta =
                     venta.TotalVenta,
 
-                productos = items
+                productos =
+                    items
             });
         }
         catch
         {
             await transaction.RollbackAsync();
+
             throw;
         }
     }
@@ -347,6 +408,15 @@ public class VentasController : ControllerBase
             });
         }
 
+        if (string.IsNullOrWhiteSpace(request.MetodoPago))
+        {
+            return BadRequest(new
+            {
+                mensaje =
+                    "El método de pago es obligatorio."
+            });
+        }
+
         var metodoPago = request.MetodoPago
             .Trim()
             .ToUpperInvariant();
@@ -366,7 +436,9 @@ public class VentasController : ControllerBase
             .Select(g => new
             {
                 IdProducto = g.Key,
-                Cantidad = g.Sum(x => x.Cantidad)
+
+                Cantidad =
+                    g.Sum(x => x.Cantidad)
             })
             .ToList();
 
@@ -385,6 +457,10 @@ public class VentasController : ControllerBase
 
         try
         {
+            // =================================================
+            // OBTENER VENTA ORIGINAL
+            // =================================================
+
             var venta = await _context.Ventas
                 .Include(v => v.DetalleVenta)
                 .ThenInclude(d =>
@@ -394,6 +470,8 @@ public class VentasController : ControllerBase
 
             if (venta == null)
             {
+                await transaction.RollbackAsync();
+
                 return NotFound(new
                 {
                     mensaje =
@@ -403,6 +481,8 @@ public class VentasController : ControllerBase
 
             if (venta.Estado != "COMPLETADA")
             {
+                await transaction.RollbackAsync();
+
                 return BadRequest(new
                 {
                     mensaje =
@@ -410,48 +490,57 @@ public class VentasController : ControllerBase
                 });
             }
 
-            /*
-             * PASO 1
-             * Guardamos una copia del detalle anterior
-             * antes de eliminarlo.
-             */
+            // =================================================
+            // COPIA DEL DETALLE ANTERIOR
+            // =================================================
 
-            var detalleAnterior = venta.DetalleVenta
-                .Select(d => new
-                {
-                    d.IdProducto,
-                    d.Cantidad
-                })
-                .ToList();
+            var detalleAnterior =
+                venta.DetalleVenta
+                    .Select(d => new
+                    {
+                        d.IdProducto,
 
-            /*
-             * PASO 2
-             * Regresamos el inventario de la venta original.
-             */
+                        d.Cantidad
+                    })
+                    .ToList();
 
-            foreach (var detalle in venta.DetalleVenta)
+            // =================================================
+            // REGRESAR INVENTARIO ORIGINAL
+            // =================================================
+
+            foreach (
+                var detalle in venta.DetalleVenta)
             {
-                detalle.IdProductoNavigation
-                    .StockActual += detalle.Cantidad;
+                detalle
+                    .IdProductoNavigation
+                    .StockActual +=
+                    detalle.Cantidad;
             }
 
-            /*
-             * PASO 3
-             * Consultamos los productos de la nueva venta.
-             */
+            // =================================================
+            // NUEVOS PRODUCTOS
+            // =================================================
 
-            var idsProductos = nuevosItems
-                .Select(x => x.IdProducto)
-                .ToList();
+            var idsProductos =
+                nuevosItems
+                    .Select(x =>
+                        x.IdProducto)
+                    .ToList();
 
-            var productos = await _context.Productos
-                .Where(p =>
-                    idsProductos.Contains(p.IdProducto))
-                .ToListAsync();
+            var productos =
+                await _context.Productos
+                    .Where(p =>
+                        idsProductos.Contains(
+                            p.IdProducto
+                        )
+                    )
+                    .ToListAsync();
 
             if (productos.Count !=
                 idsProductos.Count)
             {
+                await transaction.RollbackAsync();
+
                 return BadRequest(new
                 {
                     mensaje =
@@ -459,20 +548,21 @@ public class VentasController : ControllerBase
                 });
             }
 
-            /*
-             * PASO 4
-             * Validamos productos y stock.
-             */
+            // =================================================
+            // VALIDAR PRODUCTOS Y STOCK
+            // =================================================
 
             foreach (var item in nuevosItems)
             {
-                var producto = productos
-                    .Single(p =>
+                var producto =
+                    productos.Single(p =>
                         p.IdProducto ==
                         item.IdProducto);
 
                 if (!producto.Activo)
                 {
+                    await transaction.RollbackAsync();
+
                     return BadRequest(new
                     {
                         mensaje =
@@ -483,6 +573,8 @@ public class VentasController : ControllerBase
                 if (producto.StockActual <
                     item.Cantidad)
                 {
+                    await transaction.RollbackAsync();
+
                     return BadRequest(new
                     {
                         mensaje =
@@ -497,13 +589,12 @@ public class VentasController : ControllerBase
                 }
             }
 
-            /*
-             * PASO 5
-             * Registramos la devolución del
-             * inventario anterior.
-             */
+            // =================================================
+            // REGISTRAR DEVOLUCIÓN DEL DETALLE ANTERIOR
+            // =================================================
 
-            foreach (var detalle in detalleAnterior)
+            foreach (
+                var detalle in detalleAnterior)
             {
                 var movimiento =
                     new MovimientoInventario
@@ -531,10 +622,9 @@ public class VentasController : ControllerBase
                     .Add(movimiento);
             }
 
-            /*
-             * PASO 6
-             * Eliminamos detalle anterior.
-             */
+            // =================================================
+            // BORRAR DETALLE ANTERIOR
+            // =================================================
 
             _context.DetalleVenta
                 .RemoveRange(
@@ -543,15 +633,14 @@ public class VentasController : ControllerBase
 
             decimal totalVenta = 0;
 
-            /*
-             * PASO 7
-             * Creamos el nuevo detalle.
-             */
+            // =================================================
+            // NUEVO DETALLE
+            // =================================================
 
             foreach (var item in nuevosItems)
             {
-                var producto = productos
-                    .Single(p =>
+                var producto =
+                    productos.Single(p =>
                         p.IdProducto ==
                         item.IdProducto);
 
@@ -559,14 +648,18 @@ public class VentasController : ControllerBase
                     producto.PrecioVenta *
                     item.Cantidad;
 
-                decimal costoTotal =
-                    producto.CostoActual *
-                    item.Cantidad;
-
-                decimal gananciaBruta =
-                    subtotal - costoTotal;
-
                 totalVenta += subtotal;
+
+                /*
+                 * Igual que al crear venta:
+                 *
+                 * NO mandamos:
+                 * Subtotal
+                 * CostoTotal
+                 * GananciaBruta
+                 *
+                 * porque son columnas calculadas.
+                 */
 
                 var detalle =
                     new DetalleVentum
@@ -584,31 +677,22 @@ public class VentasController : ControllerBase
                             producto.PrecioVenta,
 
                         CostoUnitario =
-                            producto.CostoActual,
-
-                        Subtotal =
-                            subtotal,
-
-                        CostoTotal =
-                            costoTotal,
-
-                        GananciaBruta =
-                            gananciaBruta
+                            producto.CostoActual
                     };
 
                 _context.DetalleVenta
                     .Add(detalle);
 
-                /*
-                 * Descontamos nuevo stock.
-                 */
+                // =============================================
+                // DESCONTAR NUEVO STOCK
+                // =============================================
 
                 producto.StockActual -=
                     item.Cantidad;
 
-                /*
-                 * Movimiento nuevo.
-                 */
+                // =============================================
+                // NUEVO MOVIMIENTO
+                // =============================================
 
                 var movimiento =
                     new MovimientoInventario
@@ -636,10 +720,9 @@ public class VentasController : ControllerBase
                     .Add(movimiento);
             }
 
-            /*
-             * PASO 8
-             * Actualizamos encabezado.
-             */
+            // =================================================
+            // ACTUALIZAR ENCABEZADO
+            // =================================================
 
             venta.MetodoPago =
                 metodoPago;
@@ -669,6 +752,7 @@ public class VentasController : ControllerBase
         catch
         {
             await transaction.RollbackAsync();
+
             throw;
         }
     }
@@ -687,15 +771,19 @@ public class VentasController : ControllerBase
 
         try
         {
-            var venta = await _context.Ventas
-                .Include(v => v.DetalleVenta)
-                .ThenInclude(d =>
-                    d.IdProductoNavigation)
-                .FirstOrDefaultAsync(v =>
-                    v.IdVenta == id);
+            var venta =
+                await _context.Ventas
+                    .Include(v =>
+                        v.DetalleVenta)
+                    .ThenInclude(d =>
+                        d.IdProductoNavigation)
+                    .FirstOrDefaultAsync(v =>
+                        v.IdVenta == id);
 
             if (venta == null)
             {
+                await transaction.RollbackAsync();
+
                 return NotFound(new
                 {
                     mensaje =
@@ -705,6 +793,8 @@ public class VentasController : ControllerBase
 
             if (venta.Estado == "CANCELADA")
             {
+                await transaction.RollbackAsync();
+
                 return BadRequest(new
                 {
                     mensaje =
@@ -714,6 +804,8 @@ public class VentasController : ControllerBase
 
             if (venta.Estado != "COMPLETADA")
             {
+                await transaction.RollbackAsync();
+
                 return BadRequest(new
                 {
                     mensaje =
@@ -721,8 +813,12 @@ public class VentasController : ControllerBase
                 });
             }
 
-            foreach (var detalle in
-                     venta.DetalleVenta)
+            // =================================================
+            // DEVOLVER INVENTARIO
+            // =================================================
+
+            foreach (
+                var detalle in venta.DetalleVenta)
             {
                 var producto =
                     detalle.IdProductoNavigation;
@@ -756,7 +852,8 @@ public class VentasController : ControllerBase
                     .Add(movimiento);
             }
 
-            venta.Estado = "CANCELADA";
+            venta.Estado =
+                "CANCELADA";
 
             await _context.SaveChangesAsync();
 
@@ -777,6 +874,7 @@ public class VentasController : ControllerBase
         catch
         {
             await transaction.RollbackAsync();
+
             throw;
         }
     }
