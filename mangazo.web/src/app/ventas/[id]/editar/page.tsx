@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 type Producto = {
   idProducto: number;
@@ -39,12 +40,17 @@ export default function EditarVentaPage() {
   const [venta, setVenta] = useState<Venta | null>(null);
 
   const [cantidades, setCantidades] = useState<Cantidades>({});
-  const [metodoPago, setMetodoPago] = useState("TRANSFERENCIA");
+  const [metodoPago, setMetodoPago] =
+    useState("TRANSFERENCIA");
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
   const [error, setError] = useState("");
+
+  // =========================================================
+  // CARGAR VENTA + PRODUCTOS
+  // =========================================================
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -52,49 +58,72 @@ export default function EditarVentaPage() {
         setCargando(true);
         setError("");
 
-        const [ventaResponse, productosResponse] =
-          await Promise.all([
-            fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/ventas/${id}`
-            ),
-            fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/productos`
-            ),
-          ]);
+        const [
+          ventaResponse,
+          productosResponse,
+        ] = await Promise.all([
+          apiFetch(
+            `/api/ventas/${id}`
+          ),
+
+          apiFetch(
+            "/api/productos"
+          ),
+        ]);
 
         if (!ventaResponse.ok) {
-          throw new Error(`No fue posible cargar la venta #${id}.`);
+          throw new Error(
+            `No fue posible cargar la venta #${id}.`
+          );
         }
 
         if (!productosResponse.ok) {
-          throw new Error("No fue posible cargar los productos.");
+          throw new Error(
+            "No fue posible cargar los productos."
+          );
         }
 
-        const ventaData: Venta = await ventaResponse.json();
+        const ventaData: Venta =
+          await ventaResponse.json();
+
         const productosData: Producto[] =
           await productosResponse.json();
 
-        if (ventaData.estado !== "COMPLETADA") {
+        if (
+          ventaData.estado !==
+          "COMPLETADA"
+        ) {
           throw new Error(
             "Solo se pueden modificar ventas completadas."
           );
         }
 
         setVenta(ventaData);
+
         setProductos(
-          productosData.filter((p) => p.activo)
+          productosData.filter(
+            (p) => p.activo
+          )
         );
 
-        setMetodoPago(ventaData.metodoPago);
+        setMetodoPago(
+          ventaData.metodoPago
+        );
 
-        const cantidadesIniciales: Cantidades = {};
+        const cantidadesIniciales: Cantidades =
+          {};
 
-        ventaData.productos.forEach((producto) => {
-          cantidadesIniciales[producto.idProducto] =
-            producto.cantidad;
-        });
+        ventaData.productos.forEach(
+          (producto) => {
+            cantidadesIniciales[
+              producto.idProducto
+            ] = producto.cantidad;
+          }
+        );
 
-        setCantidades(cantidadesIniciales);
+        setCantidades(
+          cantidadesIniciales
+        );
       } catch (err) {
         setError(
           err instanceof Error
@@ -109,121 +138,205 @@ export default function EditarVentaPage() {
     cargarDatos();
   }, [id]);
 
-  const cantidadOriginal = (idProducto: number) => {
+  // =========================================================
+  // CANTIDAD ORIGINAL
+  // =========================================================
+
+  const cantidadOriginal = (
+    idProducto: number
+  ) => {
     return (
       venta?.productos.find(
         (producto) =>
-          producto.idProducto === idProducto
+          producto.idProducto ===
+          idProducto
       )?.cantidad ?? 0
     );
   };
 
-  const stockDisponible = (producto: Producto) => {
+  // =========================================================
+  // STOCK DISPONIBLE
+  // =========================================================
+
+  const stockDisponible = (
+    producto: Producto
+  ) => {
     return (
       producto.stockActual +
-      cantidadOriginal(producto.idProducto)
+      cantidadOriginal(
+        producto.idProducto
+      )
     );
   };
+
+  // =========================================================
+  // CAMBIAR CANTIDAD
+  // =========================================================
 
   const cambiarCantidad = (
     producto: Producto,
     cambio: number
   ) => {
-    setCantidades((actuales) => {
-      const cantidadActual =
-        actuales[producto.idProducto] ?? 0;
+    setCantidades(
+      (actuales) => {
+        const cantidadActual =
+          actuales[
+            producto.idProducto
+          ] ?? 0;
 
-      const nuevaCantidad = Math.max(
-        0,
-        Math.min(
-          cantidadActual + cambio,
-          stockDisponible(producto)
-        )
-      );
+        const nuevaCantidad =
+          Math.max(
+            0,
+            Math.min(
+              cantidadActual + cambio,
+              stockDisponible(
+                producto
+              )
+            )
+          );
 
-      return {
-        ...actuales,
-        [producto.idProducto]: nuevaCantidad,
-      };
-    });
+        return {
+          ...actuales,
+          [producto.idProducto]:
+            nuevaCantidad,
+        };
+      }
+    );
   };
 
+  // =========================================================
+  // TOTAL
+  // =========================================================
+
   const total = useMemo(() => {
-    return productos.reduce((acumulado, producto) => {
-      const cantidad =
-        cantidades[producto.idProducto] ?? 0;
+    return productos.reduce(
+      (
+        acumulado,
+        producto
+      ) => {
+        const cantidad =
+          cantidades[
+            producto.idProducto
+          ] ?? 0;
 
-      return (
-        acumulado +
-        Number(producto.precioVenta) * cantidad
-      );
-    }, 0);
-  }, [productos, cantidades]);
-
-  const cantidadTotal = useMemo(() => {
-    return Object.values(cantidades).reduce(
-      (total, cantidad) =>
-        total + cantidad,
+        return (
+          acumulado +
+          Number(
+            producto.precioVenta
+          ) *
+            cantidad
+        );
+      },
       0
     );
-  }, [cantidades]);
+  }, [productos, cantidades]);
+
+  // =========================================================
+  // CANTIDAD TOTAL
+  // =========================================================
+
+  const cantidadTotal = useMemo(
+    () => {
+      return Object.values(
+        cantidades
+      ).reduce(
+        (
+          total,
+          cantidad
+        ) =>
+          total + cantidad,
+        0
+      );
+    },
+    [cantidades]
+  );
+
+  // =========================================================
+  // GUARDAR CAMBIOS
+  // =========================================================
 
   const guardarCambios = async () => {
     if (!venta) return;
 
     setError("");
 
-    const productosSeleccionados = productos
-      .filter(
-        (producto) =>
-          (cantidades[producto.idProducto] ?? 0) > 0
-      )
-      .map((producto) => ({
-        idProducto: producto.idProducto,
-        cantidad:
-          cantidades[producto.idProducto] ?? 0,
-      }));
+    const productosSeleccionados =
+      productos
+        .filter(
+          (producto) =>
+            (cantidades[
+              producto.idProducto
+            ] ?? 0) > 0
+        )
+        .map(
+          (producto) => ({
+            idProducto:
+              producto.idProducto,
 
-    if (productosSeleccionados.length === 0) {
+            cantidad:
+              cantidades[
+                producto.idProducto
+              ] ?? 0,
+          })
+        );
+
+    if (
+      productosSeleccionados.length ===
+      0
+    ) {
       setError(
         "La venta debe contener al menos un producto."
       );
+
       return;
     }
 
-    const confirmar = window.confirm(
-      `¿Guardar los cambios de la venta #${venta.idVenta}?`
-    );
+    const confirmar =
+      window.confirm(
+        `¿Guardar los cambios de la venta #${venta.idVenta}?`
+      );
 
     if (!confirmar) return;
 
     try {
       setGuardando(true);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/ventas/${venta.idVenta}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            metodoPago,
-            productos: productosSeleccionados,
-          }),
-        }
-      );
+      const response =
+        await apiFetch(
+          `/api/ventas/${venta.idVenta}`,
+          {
+            method: "PUT",
 
-      const data = await response.json();
+            body: JSON.stringify({
+              metodoPago,
+              productos:
+                productosSeleccionados,
+            }),
+          }
+        );
+
+      let data;
+
+      try {
+        data =
+          await response.json();
+      } catch {
+        data = null;
+      }
 
       if (!response.ok) {
         throw new Error(
-          data.mensaje ??
+          data?.mensaje ??
             "No fue posible modificar la venta."
         );
       }
 
-      router.push(`/ventas/${venta.idVenta}`);
+      router.push(
+        `/ventas/${venta.idVenta}`
+      );
+
+      router.refresh();
+
     } catch (err) {
       setError(
         err instanceof Error
@@ -235,6 +348,10 @@ export default function EditarVentaPage() {
     }
   };
 
+  // =========================================================
+  // CARGANDO
+  // =========================================================
+
   if (cargando) {
     return (
       <main className="min-h-screen bg-[#F5F0E6] p-10 text-[#29321F]">
@@ -243,7 +360,14 @@ export default function EditarVentaPage() {
     );
   }
 
-  if (error && !venta) {
+  // =========================================================
+  // ERROR SIN VENTA
+  // =========================================================
+
+  if (
+    error &&
+    !venta
+  ) {
     return (
       <main className="min-h-screen bg-[#F5F0E6] p-10 text-[#29321F]">
 
@@ -261,6 +385,10 @@ export default function EditarVentaPage() {
       </main>
     );
   }
+
+  // =========================================================
+  // UI
+  // =========================================================
 
   return (
     <main className="min-h-screen bg-[#F5F0E6] px-6 py-10 text-[#29321F] lg:px-10">
@@ -312,101 +440,135 @@ export default function EditarVentaPage() {
 
             <div className="grid gap-5 md:grid-cols-2">
 
-              {productos.map((producto) => {
-                const cantidad =
-                  cantidades[producto.idProducto] ?? 0;
+              {productos.map(
+                (producto) => {
 
-                const original =
-                  cantidadOriginal(producto.idProducto);
+                  const cantidad =
+                    cantidades[
+                      producto.idProducto
+                    ] ?? 0;
 
-                return (
-                  <article
-                    key={producto.idProducto}
-                    className={`rounded-3xl border bg-white p-6 shadow-sm ${
-                      cantidad > 0
-                        ? "border-[#CF7B32]"
-                        : "border-transparent"
-                    }`}
-                  >
+                  const original =
+                    cantidadOriginal(
+                      producto.idProducto
+                    );
 
-                    <div className="flex items-start justify-between gap-4">
+                  return (
+                    <article
+                      key={
+                        producto.idProducto
+                      }
+                      className={`rounded-3xl border bg-white p-6 shadow-sm ${
+                        cantidad > 0
+                          ? "border-[#CF7B32]"
+                          : "border-transparent"
+                      }`}
+                    >
 
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-[#CF7B32]">
-                          Producto
+                      <div className="flex items-start justify-between gap-4">
+
+                        <div>
+
+                          <p className="text-xs font-bold uppercase tracking-wider text-[#CF7B32]">
+                            Producto
+                          </p>
+
+                          <h2 className="mt-1 text-xl font-bold">
+                            {
+                              producto.nombre
+                            }
+                          </h2>
+
+                        </div>
+
+                        <p className="text-2xl font-black">
+                          $
+                          {Number(
+                            producto.precioVenta
+                          ).toFixed(0)}
                         </p>
 
-                        <h2 className="mt-1 text-xl font-bold">
-                          {producto.nombre}
-                        </h2>
                       </div>
 
-                      <p className="text-2xl font-black">
-                        ${Number(producto.precioVenta).toFixed(0)}
+                      <p className="mt-3 text-sm text-[#737A68]">
+                        {
+                          producto.descripcion
+                        }
                       </p>
 
-                    </div>
+                      <div className="mt-5 flex items-center justify-between">
 
-                    <p className="mt-3 text-sm text-[#737A68]">
-                      {producto.descripcion}
-                    </p>
+                        <div>
 
-                    <div className="mt-5 flex items-center justify-between">
-
-                      <div>
-                        <p className="text-xs uppercase text-[#8A907E]">
-                          Disponible
-                        </p>
-
-                        <p className="font-bold">
-                          {stockDisponible(producto)} bolsas
-                        </p>
-
-                        {original > 0 && (
-                          <p className="mt-1 text-xs font-bold text-[#CF7B32]">
-                            Actual en venta: {original}
+                          <p className="text-xs uppercase text-[#8A907E]">
+                            Disponible
                           </p>
-                        )}
+
+                          <p className="font-bold">
+                            {stockDisponible(
+                              producto
+                            )}{" "}
+                            bolsas
+                          </p>
+
+                          {original > 0 && (
+                            <p className="mt-1 text-xs font-bold text-[#CF7B32]">
+                              Actual en venta:{" "}
+                              {original}
+                            </p>
+                          )}
+
+                        </div>
+
+                        <div className="flex items-center gap-4">
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              cambiarCantidad(
+                                producto,
+                                -1
+                              )
+                            }
+                            disabled={
+                              cantidad === 0
+                            }
+                            className="flex h-11 w-11 items-center justify-center rounded-full border border-[#D8D0BE] text-xl font-bold disabled:opacity-30"
+                          >
+                            −
+                          </button>
+
+                          <span className="w-8 text-center text-2xl font-black">
+                            {cantidad}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              cambiarCantidad(
+                                producto,
+                                1
+                              )
+                            }
+                            disabled={
+                              cantidad >=
+                              stockDisponible(
+                                producto
+                              )
+                            }
+                            className="flex h-11 w-11 items-center justify-center rounded-full bg-[#4E5A36] text-xl font-bold text-white disabled:opacity-30"
+                          >
+                            +
+                          </button>
+
+                        </div>
+
                       </div>
 
-                      <div className="flex items-center gap-4">
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            cambiarCantidad(producto, -1)
-                          }
-                          disabled={cantidad === 0}
-                          className="flex h-11 w-11 items-center justify-center rounded-full border border-[#D8D0BE] text-xl font-bold disabled:opacity-30"
-                        >
-                          −
-                        </button>
-
-                        <span className="w-8 text-center text-2xl font-black">
-                          {cantidad}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            cambiarCantidad(producto, 1)
-                          }
-                          disabled={
-                            cantidad >=
-                            stockDisponible(producto)
-                          }
-                          className="flex h-11 w-11 items-center justify-center rounded-full bg-[#4E5A36] text-xl font-bold text-white disabled:opacity-30"
-                        >
-                          +
-                        </button>
-
-                      </div>
-
-                    </div>
-
-                  </article>
-                );
-              })}
+                    </article>
+                  );
+                }
+              )}
 
             </div>
 
@@ -433,42 +595,57 @@ export default function EditarVentaPage() {
                 {productos
                   .filter(
                     (producto) =>
-                      (cantidades[producto.idProducto] ?? 0) > 0
+                      (cantidades[
+                        producto.idProducto
+                      ] ?? 0) > 0
                   )
-                  .map((producto) => {
-                    const cantidad =
-                      cantidades[producto.idProducto] ?? 0;
+                  .map(
+                    (producto) => {
 
-                    return (
-                      <div
-                        key={producto.idProducto}
-                        className="flex justify-between gap-4"
-                      >
+                      const cantidad =
+                        cantidades[
+                          producto.idProducto
+                        ] ?? 0;
 
-                        <div>
-                          <p className="font-semibold">
-                            {producto.nombre}
+                      return (
+                        <div
+                          key={
+                            producto.idProducto
+                          }
+                          className="flex justify-between gap-4"
+                        >
+
+                          <div>
+
+                            <p className="font-semibold">
+                              {
+                                producto.nombre
+                              }
+                            </p>
+
+                            <p className="text-sm text-white/60">
+                              {cantidad} × $
+                              {Number(
+                                producto.precioVenta
+                              ).toFixed(0)}
+                            </p>
+
+                          </div>
+
+                          <p className="font-bold">
+                            $
+                            {(
+                              cantidad *
+                              Number(
+                                producto.precioVenta
+                              )
+                            ).toFixed(2)}
                           </p>
 
-                          <p className="text-sm text-white/60">
-                            {cantidad} × $
-                            {Number(
-                              producto.precioVenta
-                            ).toFixed(0)}
-                          </p>
                         </div>
-
-                        <p className="font-bold">
-                          $
-                          {(
-                            cantidad *
-                            Number(producto.precioVenta)
-                          ).toFixed(2)}
-                        </p>
-
-                      </div>
-                    );
-                  })}
+                      );
+                    }
+                  )}
 
               </div>
 
@@ -477,6 +654,7 @@ export default function EditarVentaPage() {
               <div className="flex items-end justify-between">
 
                 <div>
+
                   <p className="text-sm text-white/60">
                     Nuevo total
                   </p>
@@ -484,6 +662,7 @@ export default function EditarVentaPage() {
                   <p className="text-xs text-white/40">
                     {cantidadTotal} bolsa(s)
                   </p>
+
                 </div>
 
                 <p className="text-4xl font-black">
@@ -505,10 +684,13 @@ export default function EditarVentaPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      setMetodoPago("EFECTIVO")
+                      setMetodoPago(
+                        "EFECTIVO"
+                      )
                     }
                     className={`rounded-xl px-4 py-3 text-sm font-bold ${
-                      metodoPago === "EFECTIVO"
+                      metodoPago ===
+                      "EFECTIVO"
                         ? "bg-[#E78A32]"
                         : "bg-white/10"
                     }`}
@@ -519,10 +701,13 @@ export default function EditarVentaPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      setMetodoPago("TRANSFERENCIA")
+                      setMetodoPago(
+                        "TRANSFERENCIA"
+                      )
                     }
                     className={`rounded-xl px-4 py-3 text-sm font-bold ${
-                      metodoPago === "TRANSFERENCIA"
+                      metodoPago ===
+                      "TRANSFERENCIA"
                         ? "bg-[#E78A32]"
                         : "bg-white/10"
                     }`}
@@ -538,7 +723,9 @@ export default function EditarVentaPage() {
 
               <button
                 type="button"
-                onClick={guardarCambios}
+                onClick={
+                  guardarCambios
+                }
                 disabled={
                   guardando ||
                   cantidadTotal === 0

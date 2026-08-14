@@ -457,6 +457,22 @@ SQL Server computed columns are used for subtotal, total cost, and gross profit 
 
 Both sales and inventory operations support multiple products in a single workflow.
 
+## 📸 Application Preview
+
+### Dashboard
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### New Sale
+
+![New Sale](docs/screenshots/nueva-venta.png)
+
+### Inventory
+
+![Inventory](docs/screenshots/inventario.png)
+
+
+
 ---
 
 ## 🗺️ Future Improvements

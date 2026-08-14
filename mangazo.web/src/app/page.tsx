@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 type Dashboard = {
   hoy: {
@@ -50,14 +51,18 @@ export default function Home() {
   const [error, setError] =
     useState("");
 
+  // =========================================================
+  // CARGAR DASHBOARD
+  // =========================================================
+
   useEffect(() => {
     const cargarDashboard = async () => {
       try {
         setCargando(true);
         setError("");
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard`
+        const response = await apiFetch(
+          "/api/dashboard"
         );
 
         if (!response.ok) {
@@ -66,7 +71,8 @@ export default function Home() {
           );
         }
 
-        const data = await response.json();
+        const data: Dashboard =
+          await response.json();
 
         setDashboard(data);
       } catch (err) {
@@ -83,6 +89,10 @@ export default function Home() {
     cargarDashboard();
   }, []);
 
+  // =========================================================
+  // FORMATOS
+  // =========================================================
+
   const formatearDinero = (
     cantidad: number
   ) =>
@@ -92,8 +102,12 @@ export default function Home() {
       maximumFractionDigits: 0,
     }).format(cantidad);
 
+  // =========================================================
+  // MÁXIMO DE VENTA PARA GRÁFICA
+  // =========================================================
+
   const maxVentaDia = useMemo(() => {
-    if (!dashboard) return 0;
+    if (!dashboard) return 1;
 
     return Math.max(
       ...dashboard.ventasUltimos7Dias.map(
@@ -103,33 +117,58 @@ export default function Home() {
     );
   }, [dashboard]);
 
+  // =========================================================
+  // CARGANDO
+  // =========================================================
+
   if (cargando) {
     return (
       <main className="min-h-screen bg-[#F5F0E6] p-10">
-        Cargando Mangazo...
-      </main>
-    );
-  }
-
-  if (error || !dashboard) {
-    return (
-      <main className="min-h-screen bg-[#F5F0E6] p-10">
-        <div className="rounded-3xl bg-red-100 p-6 text-red-700">
-          {error || "No hay información disponible."}
+        <div className="mx-auto max-w-7xl">
+          <div className="rounded-3xl bg-white p-10 shadow-sm">
+            <p className="text-lg font-bold text-[#29321F]">
+              Cargando Mangazo... 🥭
+            </p>
+          </div>
         </div>
       </main>
     );
   }
 
+  // =========================================================
+  // ERROR
+  // =========================================================
+
+  if (error || !dashboard) {
+    return (
+      <main className="min-h-screen bg-[#F5F0E6] p-10">
+        <div className="mx-auto max-w-7xl">
+          <div className="rounded-3xl bg-red-100 p-6 text-red-700">
+            {error ||
+              "No hay información disponible."}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // =========================================================
+  // UI
+  // =========================================================
+
   return (
     <main className="min-h-screen bg-[#F5F0E6] px-6 py-10 text-[#29321F] lg:px-10">
+
       <div className="mx-auto max-w-7xl">
 
-        {/* HEADER */}
+        {/* =====================================================
+            HEADER
+        ===================================================== */}
 
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
 
           <div>
+
             <p className="text-sm font-black uppercase tracking-[0.18em] text-[#CF7B32]">
               Dashboard
             </p>
@@ -141,6 +180,7 @@ export default function Home() {
             <p className="mt-2 text-[#68715C]">
               Así está el negocio en este momento.
             </p>
+
           </div>
 
           <Link
@@ -152,11 +192,14 @@ export default function Home() {
 
         </div>
 
-        {/* HOY */}
+        {/* =====================================================
+            HOY
+        ===================================================== */}
 
         <section className="mt-8 grid gap-5 md:grid-cols-2">
 
           <div className="rounded-3xl bg-[#29321F] p-7 text-white shadow-sm">
+
             <p className="text-sm text-white/60">
               Ventas de hoy
             </p>
@@ -168,9 +211,11 @@ export default function Home() {
             <p className="mt-2 text-sm text-white/50">
               operaciones completadas
             </p>
+
           </div>
 
           <div className="rounded-3xl bg-[#E78A32] p-7 text-white shadow-sm">
+
             <p className="text-sm text-white/70">
               Ingresos de hoy
             </p>
@@ -180,15 +225,21 @@ export default function Home() {
                 dashboard.hoy.ingresos
               )}
             </p>
+
           </div>
 
         </section>
 
-        {/* KPIs MES */}
+        {/* =====================================================
+            KPIs DEL MES
+        ===================================================== */}
 
         <section className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
 
+          {/* INGRESOS */}
+
           <div className="rounded-3xl bg-white p-6 shadow-sm">
+
             <p className="text-sm text-[#737A68]">
               Ingresos del mes
             </p>
@@ -202,9 +253,13 @@ export default function Home() {
             <p className="mt-2 text-xs text-[#8A907E]">
               {dashboard.mes.ventas} ventas
             </p>
+
           </div>
 
+          {/* UTILIDAD BRUTA */}
+
           <div className="rounded-3xl bg-white p-6 shadow-sm">
+
             <p className="text-sm text-[#737A68]">
               Utilidad bruta
             </p>
@@ -221,9 +276,13 @@ export default function Home() {
               )}
               % margen
             </p>
+
           </div>
 
+          {/* GASTOS */}
+
           <div className="rounded-3xl bg-white p-6 shadow-sm">
+
             <p className="text-sm text-[#737A68]">
               Gastos del mes
             </p>
@@ -233,7 +292,10 @@ export default function Home() {
                 dashboard.mes.gastos
               )}
             </p>
+
           </div>
+
+          {/* UTILIDAD NETA */}
 
           <div
             className={`rounded-3xl p-6 text-white shadow-sm ${
@@ -242,6 +304,7 @@ export default function Home() {
                 : "bg-red-600"
             }`}
           >
+
             <p className="text-sm text-white/70">
               Utilidad neta
             </p>
@@ -253,16 +316,23 @@ export default function Home() {
             </p>
 
             <p className="mt-2 text-xs text-white/60">
-              {dashboard.mes.margenNeto.toFixed(1)}%
-              margen neto
+              {dashboard.mes.margenNeto.toFixed(
+                1
+              )}
+              % margen neto
             </p>
+
           </div>
 
         </section>
 
-        {/* MÉTRICAS */}
+        {/* =====================================================
+            MÉTRICAS
+        ===================================================== */}
 
         <section className="mt-5 grid gap-5 md:grid-cols-3">
+
+          {/* BOLSAS */}
 
           <div className="rounded-3xl bg-white p-6 shadow-sm">
 
@@ -275,6 +345,8 @@ export default function Home() {
             </p>
 
           </div>
+
+          {/* TICKET */}
 
           <div className="rounded-3xl bg-white p-6 shadow-sm">
 
@@ -289,6 +361,8 @@ export default function Home() {
             </p>
 
           </div>
+
+          {/* PRODUCTO ESTRELLA */}
 
           <div className="rounded-3xl bg-[#29321F] p-6 text-white shadow-sm">
 
@@ -311,11 +385,14 @@ export default function Home() {
 
         </section>
 
-        {/* GRÁFICA */}
+        {/* =====================================================
+            GRÁFICA ÚLTIMOS 7 DÍAS
+        ===================================================== */}
 
         <section className="mt-8 rounded-3xl bg-white p-7 shadow-sm">
 
           <div>
+
             <h2 className="text-2xl font-black">
               Ventas últimos 7 días
             </h2>
@@ -323,6 +400,7 @@ export default function Home() {
             <p className="mt-1 text-sm text-[#737A68]">
               Ingresos diarios.
             </p>
+
           </div>
 
           <div className="mt-8 flex h-64 items-end gap-4">
@@ -354,7 +432,9 @@ export default function Home() {
                         style={{
                           height: `${Math.max(
                             porcentaje,
-                            item.total > 0 ? 5 : 0
+                            Number(item.total) > 0
+                              ? 5
+                              : 0
                           )}%`,
                         }}
                       />
@@ -381,9 +461,13 @@ export default function Home() {
 
         </section>
 
-        {/* INVENTARIO */}
+        {/* =====================================================
+            INVENTARIO
+        ===================================================== */}
 
         <section className="mt-8 grid gap-5 md:grid-cols-3">
+
+          {/* STOCK TOTAL */}
 
           <div className="rounded-3xl bg-white p-6 shadow-sm">
 
@@ -392,7 +476,10 @@ export default function Home() {
             </p>
 
             <p className="mt-3 text-4xl font-black">
-              {dashboard.inventario.stockTotal}
+              {
+                dashboard.inventario
+                  .stockTotal
+              }
             </p>
 
             <p className="mt-1 text-xs text-[#8A907E]">
@@ -400,6 +487,8 @@ export default function Home() {
             </p>
 
           </div>
+
+          {/* STOCK BAJO */}
 
           <div
             className={`rounded-3xl p-6 shadow-sm ${
@@ -430,6 +519,8 @@ export default function Home() {
 
           </div>
 
+          {/* VALOR INVENTARIO */}
+
           <div className="rounded-3xl bg-white p-6 shadow-sm">
 
             <p className="text-sm text-[#737A68]">
@@ -452,6 +543,7 @@ export default function Home() {
         </section>
 
       </div>
+
     </main>
   );
 }

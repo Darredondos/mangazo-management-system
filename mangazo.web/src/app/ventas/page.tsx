@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 
 type ProductoVenta = {
@@ -33,15 +34,19 @@ export default function VentasPage() {
         setCargando(true);
         setError("");
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/ventas`
+        const response = await apiFetch(
+          "/api/ventas"
         );
 
         if (!response.ok) {
-          throw new Error("No fue posible cargar las ventas.");
+          throw new Error(
+            "No fue posible cargar las ventas."
+          );
         }
 
-        const data: Venta[] = await response.json();
+        const data: Venta[] =
+          await response.json();
+
         setVentas(data);
       } catch (err) {
         setError(
@@ -58,14 +63,20 @@ export default function VentasPage() {
   }, []);
 
   const ventasCompletadas = useMemo(
-    () => ventas.filter((venta) => venta.estado === "COMPLETADA"),
+    () =>
+      ventas.filter(
+        (venta) =>
+          venta.estado === "COMPLETADA"
+      ),
     [ventas]
   );
 
   const ingresos = useMemo(
     () =>
       ventasCompletadas.reduce(
-        (total, venta) => total + Number(venta.totalVenta),
+        (total, venta) =>
+          total +
+          Number(venta.totalVenta),
         0
       ),
     [ventasCompletadas]
@@ -78,7 +89,10 @@ export default function VentasPage() {
           total +
           venta.productos.reduce(
             (subtotal, producto) =>
-              subtotal + Number(producto.gananciaBruta ?? 0),
+              subtotal +
+              Number(
+                producto.gananciaBruta ?? 0
+              ),
             0
           ),
         0
@@ -86,24 +100,31 @@ export default function VentasPage() {
     [ventasCompletadas]
   );
 
-  const formatearDinero = (cantidad: number) =>
+  const formatearDinero = (
+    cantidad: number
+  ) =>
     new Intl.NumberFormat("es-MX", {
       style: "currency",
       currency: "MXN",
     }).format(cantidad);
 
-  const formatearFecha = (fecha: string) =>
-    new Intl.DateTimeFormat("es-MX", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(fecha));
+  const formatearFecha = (
+    fecha: string
+  ) =>
+    new Intl.DateTimeFormat(
+      "es-MX",
+      {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }
+    ).format(new Date(fecha));
 
   return (
     <main className="min-h-screen bg-[#F5F0E6] px-6 py-10 text-[#29321F] lg:px-10">
 
-      {/* ENCABEZADO */}
-
       <div className="mx-auto max-w-7xl">
+
+        {/* ENCABEZADO */}
 
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
 
@@ -192,152 +213,175 @@ export default function VentasPage() {
             </div>
           )}
 
-          {!cargando && !error && ventas.length === 0 && (
-            <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
-              <p className="text-xl font-bold">
-                Todavía no hay ventas.
-              </p>
+          {!cargando &&
+            !error &&
+            ventas.length === 0 && (
+              <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
 
-              <Link
-                href="/ventas/nueva"
-                className="mt-5 inline-block font-bold text-[#CF7B32]"
-              >
-                Registrar primera venta →
-              </Link>
-            </div>
-          )}
+                <p className="text-xl font-bold">
+                  Todavía no hay ventas.
+                </p>
 
-          {!cargando && !error && ventas.length > 0 && (
-
-            <div className="overflow-hidden rounded-3xl bg-white shadow-sm">
-
-              <div className="overflow-x-auto">
-
-                <table className="w-full">
-
-                  <thead className="bg-[#29321F] text-left text-sm text-white">
-
-                    <tr>
-                      <th className="px-6 py-4">
-                        Venta
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Fecha
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Productos
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Método
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Total
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Estado
-                      </th>
-
-                      <th className="px-6 py-4" />
-                    </tr>
-
-                  </thead>
-
-                  <tbody>
-
-                    {ventas.map((venta) => {
-
-                      const cantidadProductos =
-                        venta.productos.reduce(
-                          (total, producto) =>
-                            total + producto.cantidad,
-                          0
-                        );
-
-                      return (
-                        <tr
-                          key={venta.idVenta}
-                          className="border-b border-[#EEE8DC] transition last:border-none hover:bg-[#FAF7F0]"
-                        >
-
-                          <td className="px-6 py-5">
-                            <span className="font-black">
-                              #{venta.idVenta}
-                            </span>
-                          </td>
-
-                          <td className="whitespace-nowrap px-6 py-5 text-sm text-[#68715C]">
-                            {formatearFecha(venta.fechaVenta)}
-                          </td>
-
-                          <td className="px-6 py-5">
-                            <span className="font-semibold">
-                              {cantidadProductos}
-                            </span>
-
-                            <span className="ml-1 text-sm text-[#8A907E]">
-                              bolsa(s)
-                            </span>
-                          </td>
-
-                          <td className="px-6 py-5">
-
-                            <span className="rounded-full bg-[#F4E7D1] px-3 py-1 text-xs font-bold text-[#A85E21]">
-                              {venta.metodoPago}
-                            </span>
-
-                          </td>
-
-                          <td className="px-6 py-5 text-lg font-black">
-                            {formatearDinero(
-                              Number(venta.totalVenta)
-                            )}
-                          </td>
-
-                          <td className="px-6 py-5">
-
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-bold ${
-                                venta.estado === "COMPLETADA"
-                                  ? "bg-green-100 text-green-700"
-                                  : venta.estado === "CANCELADA"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-yellow-100 text-yellow-700"
-                              }`}
-                            >
-                              {venta.estado}
-                            </span>
-
-                          </td>
-
-                          <td className="px-6 py-5 text-right">
-
-                            <Link
-                              href={`/ventas/${venta.idVenta}`}
-                              className="font-bold text-[#CF7B32] transition hover:text-[#A85E21]"
-                            >
-                              Ver →
-                            </Link>
-
-                          </td>
-
-                        </tr>
-                      );
-                    })}
-
-                  </tbody>
-
-                </table>
+                <Link
+                  href="/ventas/nueva"
+                  className="mt-5 inline-block font-bold text-[#CF7B32]"
+                >
+                  Registrar primera venta →
+                </Link>
 
               </div>
+            )}
 
-            </div>
+          {!cargando &&
+            !error &&
+            ventas.length > 0 && (
 
-          )}
+              <div className="overflow-hidden rounded-3xl bg-white shadow-sm">
+
+                <div className="overflow-x-auto">
+
+                  <table className="w-full">
+
+                    <thead className="bg-[#29321F] text-left text-sm text-white">
+
+                      <tr>
+                        <th className="px-6 py-4">
+                          Venta
+                        </th>
+
+                        <th className="px-6 py-4">
+                          Fecha
+                        </th>
+
+                        <th className="px-6 py-4">
+                          Productos
+                        </th>
+
+                        <th className="px-6 py-4">
+                          Método
+                        </th>
+
+                        <th className="px-6 py-4">
+                          Total
+                        </th>
+
+                        <th className="px-6 py-4">
+                          Estado
+                        </th>
+
+                        <th className="px-6 py-4" />
+                      </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                      {ventas.map(
+                        (venta) => {
+
+                          const cantidadProductos =
+                            venta.productos.reduce(
+                              (
+                                total,
+                                producto
+                              ) =>
+                                total +
+                                producto.cantidad,
+                              0
+                            );
+
+                          return (
+                            <tr
+                              key={venta.idVenta}
+                              className="border-b border-[#EEE8DC] transition last:border-none hover:bg-[#FAF7F0]"
+                            >
+
+                              <td className="px-6 py-5">
+                                <span className="font-black">
+                                  #{venta.idVenta}
+                                </span>
+                              </td>
+
+                              <td className="whitespace-nowrap px-6 py-5 text-sm text-[#68715C]">
+                                {formatearFecha(
+                                  venta.fechaVenta
+                                )}
+                              </td>
+
+                              <td className="px-6 py-5">
+
+                                <span className="font-semibold">
+                                  {
+                                    cantidadProductos
+                                  }
+                                </span>
+
+                                <span className="ml-1 text-sm text-[#8A907E]">
+                                  bolsa(s)
+                                </span>
+
+                              </td>
+
+                              <td className="px-6 py-5">
+
+                                <span className="rounded-full bg-[#F4E7D1] px-3 py-1 text-xs font-bold text-[#A85E21]">
+                                  {
+                                    venta.metodoPago
+                                  }
+                                </span>
+
+                              </td>
+
+                              <td className="px-6 py-5 text-lg font-black">
+                                {formatearDinero(
+                                  Number(
+                                    venta.totalVenta
+                                  )
+                                )}
+                              </td>
+
+                              <td className="px-6 py-5">
+
+                                <span
+                                  className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                    venta.estado ===
+                                    "COMPLETADA"
+                                      ? "bg-green-100 text-green-700"
+                                      : venta.estado ===
+                                        "CANCELADA"
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-yellow-100 text-yellow-700"
+                                  }`}
+                                >
+                                  {venta.estado}
+                                </span>
+
+                              </td>
+
+                              <td className="px-6 py-5 text-right">
+
+                                <Link
+                                  href={`/ventas/${venta.idVenta}`}
+                                  className="font-bold text-[#CF7B32] transition hover:text-[#A85E21]"
+                                >
+                                  Ver →
+                                </Link>
+
+                              </td>
+
+                            </tr>
+                          );
+                        }
+                      )}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              </div>
+            )}
 
         </section>
 

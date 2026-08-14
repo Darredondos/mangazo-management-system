@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 type ProductoVenta = {
   idProducto: number;
@@ -36,26 +37,36 @@ export default function VentaDetallePage() {
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
+  // =========================================================
+  // CARGAR VENTA
+  // =========================================================
+
   const cargarVenta = async () => {
     try {
       setCargando(true);
       setError("");
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/ventas/${id}`
+      const response = await apiFetch(
+        `/api/ventas/${id}`
       );
 
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error(`No existe la venta #${id}.`);
+          throw new Error(
+            `No existe la venta #${id}.`
+          );
         }
 
-        throw new Error("No fue posible cargar la venta.");
+        throw new Error(
+          "No fue posible cargar la venta."
+        );
       }
 
-      const data: Venta = await response.json();
+      const data: Venta =
+        await response.json();
 
       setVenta(data);
+
     } catch (err) {
       setError(
         err instanceof Error
@@ -71,6 +82,10 @@ export default function VentaDetallePage() {
     cargarVenta();
   }, [id]);
 
+  // =========================================================
+  // CANCELAR VENTA
+  // =========================================================
+
   const cancelarVenta = async () => {
     if (!venta) return;
 
@@ -85,26 +100,35 @@ export default function VentaDetallePage() {
       setError("");
       setMensaje("");
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/ventas/${venta.idVenta}/cancelar`,
+      const response = await apiFetch(
+        `/api/ventas/${venta.idVenta}/cancelar`,
         {
           method: "POST",
         }
       );
 
-      const data = await response.json();
+      let data;
+
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
 
       if (!response.ok) {
         throw new Error(
-          data.mensaje ?? "No fue posible cancelar la venta."
+          data?.mensaje ??
+            "No fue posible cancelar la venta."
         );
       }
 
       setMensaje(
-        data.mensaje ?? "Venta cancelada correctamente."
+        data?.mensaje ??
+          "Venta cancelada correctamente."
       );
 
       await cargarVenta();
+
     } catch (err) {
       setError(
         err instanceof Error
@@ -116,17 +140,25 @@ export default function VentaDetallePage() {
     }
   };
 
+  // =========================================================
+  // CÁLCULOS
+  // =========================================================
+
   const costoTotal =
     venta?.productos.reduce(
       (total, producto) =>
-        total + Number(producto.costoTotal ?? 0),
+        total +
+        Number(producto.costoTotal ?? 0),
       0
     ) ?? 0;
 
   const gananciaTotal =
     venta?.productos.reduce(
       (total, producto) =>
-        total + Number(producto.gananciaBruta ?? 0),
+        total +
+        Number(
+          producto.gananciaBruta ?? 0
+        ),
       0
     ) ?? 0;
 
@@ -137,31 +169,56 @@ export default function VentaDetallePage() {
       0
     ) ?? 0;
 
-  const formatearDinero = (cantidad: number) =>
-    new Intl.NumberFormat("es-MX", {
-      style: "currency",
-      currency: "MXN",
-    }).format(cantidad);
+  // =========================================================
+  // FORMATOS
+  // =========================================================
 
-  const formatearFecha = (fecha: string) =>
-    new Intl.DateTimeFormat("es-MX", {
-      dateStyle: "full",
-      timeStyle: "short",
-    }).format(new Date(fecha));
+  const formatearDinero = (
+    cantidad: number
+  ) =>
+    new Intl.NumberFormat(
+      "es-MX",
+      {
+        style: "currency",
+        currency: "MXN",
+      }
+    ).format(cantidad);
+
+  const formatearFecha = (
+    fecha: string
+  ) =>
+    new Intl.DateTimeFormat(
+      "es-MX",
+      {
+        dateStyle: "full",
+        timeStyle: "short",
+      }
+    ).format(new Date(fecha));
+
+  // =========================================================
+  // CARGANDO
+  // =========================================================
 
   if (cargando) {
     return (
       <main className="min-h-screen bg-[#F5F0E6] p-10 text-[#29321F]">
+
         <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
           Cargando venta...
         </div>
+
       </main>
     );
   }
 
+  // =========================================================
+  // VENTA NO ENCONTRADA
+  // =========================================================
+
   if (!venta) {
     return (
       <main className="min-h-screen bg-[#F5F0E6] p-10 text-[#29321F]">
+
         <div className="rounded-3xl bg-white p-10 shadow-sm">
 
           <p className="text-xl font-black">
@@ -182,16 +239,23 @@ export default function VentaDetallePage() {
           </Link>
 
         </div>
+
       </main>
     );
   }
+
+  // =========================================================
+  // UI
+  // =========================================================
 
   return (
     <main className="min-h-screen bg-[#F5F0E6] px-6 py-10 text-[#29321F] lg:px-10">
 
       <div className="mx-auto max-w-6xl">
 
-        {/* VOLVER */}
+        {/* =====================================================
+            VOLVER
+        ===================================================== */}
 
         <div className="mb-8">
 
@@ -204,7 +268,9 @@ export default function VentaDetallePage() {
 
         </div>
 
-        {/* MENSAJES */}
+        {/* =====================================================
+            MENSAJES
+        ===================================================== */}
 
         {error && (
           <div className="mb-6 rounded-2xl bg-red-100 p-5 font-semibold text-red-700">
@@ -218,7 +284,9 @@ export default function VentaDetallePage() {
           </div>
         )}
 
-        {/* ENCABEZADO */}
+        {/* =====================================================
+            ENCABEZADO
+        ===================================================== */}
 
         <section className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
 
@@ -233,7 +301,9 @@ export default function VentaDetallePage() {
             </h1>
 
             <p className="mt-2 text-[#68715C]">
-              {formatearFecha(venta.fechaVenta)}
+              {formatearFecha(
+                venta.fechaVenta
+              )}
             </p>
 
           </div>
@@ -252,7 +322,9 @@ export default function VentaDetallePage() {
 
         </section>
 
-        {/* KPIs */}
+        {/* =====================================================
+            KPIs
+        ===================================================== */}
 
         <section className="mt-8 grid gap-5 md:grid-cols-4">
 
@@ -264,7 +336,9 @@ export default function VentaDetallePage() {
 
             <p className="mt-3 text-3xl font-black">
               {formatearDinero(
-                Number(venta.totalVenta)
+                Number(
+                  venta.totalVenta
+                )
               )}
             </p>
 
@@ -277,7 +351,9 @@ export default function VentaDetallePage() {
             </p>
 
             <p className="mt-3 text-3xl font-black">
-              {formatearDinero(costoTotal)}
+              {formatearDinero(
+                costoTotal
+              )}
             </p>
 
           </div>
@@ -289,7 +365,9 @@ export default function VentaDetallePage() {
             </p>
 
             <p className="mt-3 text-3xl font-black">
-              {formatearDinero(gananciaTotal)}
+              {formatearDinero(
+                gananciaTotal
+              )}
             </p>
 
           </div>
@@ -308,7 +386,9 @@ export default function VentaDetallePage() {
 
         </section>
 
-        {/* PRODUCTOS */}
+        {/* =====================================================
+            PRODUCTOS
+        ===================================================== */}
 
         <section className="mt-8 overflow-hidden rounded-3xl bg-white shadow-sm">
 
@@ -339,6 +419,7 @@ export default function VentaDetallePage() {
                 <thead className="bg-[#29321F] text-left text-sm text-white">
 
                   <tr>
+
                     <th className="px-6 py-4">
                       Producto
                     </th>
@@ -362,6 +443,7 @@ export default function VentaDetallePage() {
                     <th className="px-6 py-4">
                       Ganancia
                     </th>
+
                   </tr>
 
                 </thead>
@@ -372,16 +454,22 @@ export default function VentaDetallePage() {
                     (producto) => (
 
                       <tr
-                        key={producto.idProducto}
+                        key={
+                          producto.idProducto
+                        }
                         className="border-b border-[#EEE8DC] last:border-none"
                       >
 
                         <td className="px-6 py-5 font-bold">
-                          {producto.nombre}
+                          {
+                            producto.nombre
+                          }
                         </td>
 
                         <td className="px-6 py-5">
-                          {producto.cantidad}
+                          {
+                            producto.cantidad
+                          }
                         </td>
 
                         <td className="px-6 py-5">
@@ -431,7 +519,9 @@ export default function VentaDetallePage() {
 
         </section>
 
-        {/* INFO + ACCIONES */}
+        {/* =====================================================
+            INFORMACIÓN + ACCIONES
+        ===================================================== */}
 
         <section className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
 
@@ -523,8 +613,12 @@ export default function VentaDetallePage() {
 
                 <button
                   type="button"
-                  onClick={cancelarVenta}
-                  disabled={cancelando}
+                  onClick={
+                    cancelarVenta
+                  }
+                  disabled={
+                    cancelando
+                  }
                   className="mt-4 w-full rounded-2xl bg-red-500 px-5 py-4 font-black text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {cancelando

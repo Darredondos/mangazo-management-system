@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Mangazo.API.Data;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Mangazo.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ReportesController : ControllerBase
 {
     private readonly MangazoDbContext _context;

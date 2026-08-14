@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 
 type ProductoReporte = {
   idProducto: number;
@@ -79,8 +80,8 @@ export default function ReportesPage() {
       setCargando(true);
       setError("");
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/reportes?desde=${desde}&hasta=${hasta}`
+      const response = await apiFetch(
+        `/api/reportes?desde=${desde}&hasta=${hasta}`
       );
 
       if (!response.ok) {

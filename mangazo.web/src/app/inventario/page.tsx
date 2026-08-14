@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 
 type Producto = {
   idProducto: number;
@@ -74,13 +75,8 @@ export default function InventarioPage() {
         productosResponse,
         movimientosResponse,
       ] = await Promise.all([
-        fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/inventario`
-        ),
-
-        fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/inventario/movimientos`
-        ),
+        apiFetch("/api/inventario"),
+        apiFetch("/api/inventario/movimientos"),
       ]);
 
       if (
@@ -293,34 +289,33 @@ export default function InventarioPage() {
     try {
       setGuardando(true);
 
-      const response =
-        await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/inventario/entrada-multiple`,
-          {
-            method: "POST",
+      const response = await apiFetch(
+        "/api/inventario/entrada-multiple",
+        {
+          method: "POST",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+          body: JSON.stringify({
+            productos:
+              productosSeleccionados,
 
-            body: JSON.stringify({
-              productos:
-                productosSeleccionados,
+            motivo:
+              motivo.trim() ||
+              "Producción nueva",
+          }),
+        }
+      );
 
-              motivo:
-                motivo.trim() ||
-                "Producción nueva",
-            }),
-          }
-        );
+      let data;
 
-      const data =
-        await response.json();
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
 
       if (!response.ok) {
         throw new Error(
-          data.mensaje ??
+          data?.mensaje ??
             "No fue posible registrar la entrada."
         );
       }

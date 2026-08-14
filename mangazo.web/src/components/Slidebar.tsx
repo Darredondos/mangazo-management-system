@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 type MenuItem = {
   nombre: string;
@@ -50,45 +51,100 @@ const menu: MenuItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const [logueado, setLogueado] =
+    useState(false);
+
+  // =========================================================
+  // VERIFICAR SESIÓN
+  // =========================================================
+
+  useEffect(() => {
+    const token =
+      localStorage.getItem(
+        "mangazo_token"
+      );
+
+    setLogueado(!!token);
+  }, [pathname]);
 
   // =========================================================
   // DETERMINAR OPCIÓN ACTIVA
   // =========================================================
 
-  const estaActivo = (item: MenuItem) => {
-    // Dashboard
+  const estaActivo = (
+    item: MenuItem
+  ) => {
     if (item.href === "/") {
       return pathname === "/";
     }
 
-    // Nueva venta debe ser exacta
-    if (item.href === "/ventas/nueva") {
-      return pathname === "/ventas/nueva";
+    if (
+      item.href === "/ventas/nueva"
+    ) {
+      return (
+        pathname ===
+        "/ventas/nueva"
+      );
     }
 
-    // Ventas incluye:
-    // /ventas
-    // /ventas/75
-    // /ventas/75/editar
-    //
-    // PERO NO:
-    // /ventas/nueva
     if (item.href === "/ventas") {
       return (
         pathname === "/ventas" ||
         (
-          pathname.startsWith("/ventas/") &&
-          !pathname.startsWith("/ventas/nueva")
+          pathname.startsWith(
+            "/ventas/"
+          ) &&
+          !pathname.startsWith(
+            "/ventas/nueva"
+          )
         )
       );
     }
 
-    // Resto de módulos
     return (
       pathname === item.href ||
-      pathname.startsWith(`${item.href}/`)
+      pathname.startsWith(
+        `${item.href}/`
+      )
     );
   };
+
+  // =========================================================
+  // CERRAR SESIÓN
+  // =========================================================
+
+  const cerrarSesion = () => {
+    localStorage.removeItem(
+      "mangazo_token"
+    );
+
+    localStorage.removeItem(
+      "mangazo_token_expiration"
+    );
+
+    localStorage.removeItem(
+      "mangazo_usuario"
+    );
+
+    setLogueado(false);
+
+    router.replace("/login");
+    router.refresh();
+  };
+
+  // =========================================================
+  // SIN SESIÓN = SIN SIDEBAR
+  // =========================================================
+
+  if (!logueado) {
+    return null;
+  }
+
+  // =========================================================
+  // SIDEBAR
+  // =========================================================
 
   return (
     <aside
@@ -122,6 +178,7 @@ export default function Sidebar() {
           py-6
         "
       >
+
         <Link
           href="/"
           className="
@@ -145,6 +202,7 @@ export default function Sidebar() {
               group-hover:scale-105
             "
           >
+
             <Image
               src="/images/mangazo_logo.png"
               alt="Logo de Mangazo"
@@ -153,6 +211,7 @@ export default function Sidebar() {
               sizes="150px"
               className="object-contain"
             />
+
           </div>
 
           {/* NOMBRE */}
@@ -187,6 +246,7 @@ export default function Sidebar() {
           </div>
 
         </Link>
+
       </div>
 
       {/* =====================================================
@@ -340,6 +400,7 @@ export default function Sidebar() {
                 bg-[#182012]
               "
             >
+
               <Image
                 src="/images/mangazo_logo.png"
                 alt="Mangazo"
@@ -347,6 +408,7 @@ export default function Sidebar() {
                 sizes="40px"
                 className="object-contain p-1"
               />
+
             </div>
 
             {/* INFO */}
@@ -404,6 +466,39 @@ export default function Sidebar() {
             Sistema conectado
 
           </div>
+
+          {/* CERRAR SESIÓN */}
+
+          <button
+            type="button"
+            onClick={cerrarSesion}
+            className="
+              mt-4
+              flex
+              w-full
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              bg-white/10
+              px-4
+              py-3
+              text-sm
+              font-black
+              text-white/70
+              transition
+              hover:bg-red-500
+              hover:text-white
+            "
+          >
+
+            <span>
+              ↪
+            </span>
+
+            Cerrar sesión
+
+          </button>
 
         </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 
 type Gasto = {
   idGasto: number;
@@ -60,8 +61,8 @@ export default function GastosPage() {
       setCargando(true);
       setError("");
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/gastos`
+      const response = await apiFetch(
+        "/api/gastos"
       );
 
       if (!response.ok) {
@@ -114,14 +115,10 @@ export default function GastosPage() {
     try {
       setGuardando(true);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/gastos`,
+      const response = await apiFetch(
+        "/api/gastos",
         {
           method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
 
           body: JSON.stringify({
             concepto,
@@ -138,12 +135,17 @@ export default function GastosPage() {
         }
       );
 
-      const data =
-        await response.json();
+      let data;
+
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
 
       if (!response.ok) {
         throw new Error(
-          data.mensaje ??
+          data?.mensaje ??
             "No fue posible registrar el gasto."
         );
       }
@@ -215,15 +217,10 @@ export default function GastosPage() {
     try {
       setGuardando(true);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/gastos/${gastoEditando.idGasto}`,
+      const response = await apiFetch(
+        `/api/gastos/${gastoEditando.idGasto}`,
         {
           method: "PUT",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
 
           body: JSON.stringify({
             concepto:
@@ -244,18 +241,23 @@ export default function GastosPage() {
         }
       );
 
-      const data =
-        await response.json();
+      let data;
+
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
 
       if (!response.ok) {
         throw new Error(
-          data.mensaje ??
+          data?.mensaje ??
             "No fue posible modificar el registro."
         );
       }
 
       setMensaje(
-        data.mensaje ??
+        data?.mensaje ??
           "Registro modificado correctamente."
       );
 
@@ -293,24 +295,29 @@ export default function GastosPage() {
       setError("");
       setMensaje("");
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/gastos/${gasto.idGasto}`,
+      const response = await apiFetch(
+        `/api/gastos/${gasto.idGasto}`,
         {
           method: "DELETE",
         }
       );
 
-      const data =
-        await response.json();
+      let data;
+
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
 
       if (!response.ok) {
         throw new Error(
-          data.mensaje ??
+          data?.mensaje ??
             "No fue posible eliminar el registro."
         );
       }
 
-      setMensaje(data.mensaje);
+      setMensaje(data?.mensaje ?? "Operación realizada correctamente.");
 
       await cargarGastos();
     } catch (err) {

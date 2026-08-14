@@ -3,11 +3,13 @@ using Microsoft.EntityFrameworkCore;
 using Mangazo.API.Data;
 using Mangazo.API.DTOs;
 using Mangazo.API.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Mangazo.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class VentasController : ControllerBase
 {
     private readonly MangazoDbContext _context;

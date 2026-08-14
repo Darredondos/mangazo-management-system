@@ -164,3 +164,5 @@
 /Users/david/Mangazo/Mangazo.API/obj/Debug/net10.0/Mangazo.API.genruntimeconfig.cache
 /Users/david/Mangazo/Mangazo.API/obj/Debug/net10.0/ref/Mangazo.API.dll
 /Users/david/Mangazo/Mangazo.API/obj/Debug/net10.0/Mangazo.API.sourcelink.json
+/Users/david/Mangazo/Mangazo.API/bin/Debug/net10.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
+/Users/david/Mangazo/Mangazo.API/bin/Debug/net10.0/Microsoft.Bcl.Cryptography.dll
