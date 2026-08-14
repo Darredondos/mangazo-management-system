@@ -1,36 +1,490 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🥭 Mangazo Management System
 
-## Getting Started
+A full-stack business management application built to manage the real-world operations of **Mangazo**, a dehydrated mango business.
 
-First, run the development server:
+The system centralizes sales, inventory, products, expenses, and business reporting in a single application, replacing manual tracking with a structured and scalable solution.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 📸 Overview
+
+Mangazo Management System provides a dashboard for monitoring business performance and dedicated modules for managing the day-to-day operation.
+
+### Main Features
+
+- 📊 Business dashboard
+- 💰 Sales management
+- 📦 Inventory control
+- 🥭 Product management
+- 💸 Expense tracking
+- 📈 Business reports
+- ✏️ Sales correction
+- ❌ Sales cancellation
+- 🔄 Automatic inventory movements
+- 💵 Gross profit calculation
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+
+- Next.js
+- React
+- TypeScript
+- CSS
+- Fetch API
+
+### Backend
+
+- ASP.NET Core Web API
+- C#
+- Entity Framework Core
+- REST API
+
+### Database & Cloud
+
+- Microsoft SQL Server
+- Azure SQL Database
+
+### Development Tools
+
+- Visual Studio Code
+- Git
+- GitHub
+- .NET CLI
+- npm
+
+---
+
+## 🏗️ Architecture
+
+The application follows a full-stack architecture with a clear separation between the user interface, API, business logic, and database.
+
+```text
+┌──────────────────────────────┐
+│          Next.js UI          │
+│     React + TypeScript       │
+└──────────────┬───────────────┘
+               │
+               │ HTTP / REST
+               ▼
+┌──────────────────────────────┐
+│    ASP.NET Core Web API      │
+│                              │
+│ Controllers + Business Logic │
+└──────────────┬───────────────┘
+               │
+               │ Entity Framework Core
+               ▼
+┌──────────────────────────────┐
+│       Azure SQL Database     │
+│                              │
+│ Sales • Products • Inventory│
+│ Expenses • Profit Data       │
+└──────────────────────────────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📊 Dashboard
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The dashboard provides a quick overview of the current state of the business.
 
-## Learn More
+It aggregates information from multiple areas of the system to help monitor sales and operational performance.
 
-To learn more about Next.js, take a look at the following resources:
+The dashboard includes business metrics such as:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Sales performance
+- Number of sales
+- Average ticket
+- Inventory information
+- Product performance
+- Expenses
+- Profit-related information
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 💰 Sales Management
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The sales module allows users to register transactions containing one or multiple products.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+When a sale is registered, the application:
+
+1. Validates the selected products.
+2. Validates available inventory.
+3. Calculates the total sale amount.
+4. Creates the sale record.
+5. Creates the sale detail records.
+6. Automatically reduces product inventory.
+7. Creates inventory movement records.
+8. Stores the historical product cost associated with the transaction.
+
+Supported payment methods include:
+
+- Cash
+- Bank transfer
+
+Sales are displayed from newest to oldest for easier operational use.
+
+---
+
+## ✏️ Sales Correction
+
+Existing completed sales can be modified when a product or quantity was entered incorrectly.
+
+The system safely handles the correction by:
+
+1. Returning the inventory from the original transaction.
+2. Recording the corresponding inventory movement.
+3. Removing the previous sale detail.
+4. Validating the replacement products and stock.
+5. Creating the corrected sale detail.
+6. Reducing the new inventory quantities.
+7. Recalculating the sale total.
+
+This keeps inventory consistent even when historical sales require correction.
+
+---
+
+## ❌ Sales Cancellation
+
+Sales can also be cancelled without deleting their historical record.
+
+When a sale is cancelled:
+
+- The sale status changes to `CANCELADA`.
+- The sold products are returned to inventory.
+- New inventory movements are created to document the return.
+
+This preserves transaction history while maintaining accurate stock levels.
+
+---
+
+## 📦 Inventory Management
+
+The inventory module tracks the available quantity of every product.
+
+Inventory movements are automatically generated by operations such as sales and cancellations.
+
+Each movement contains information such as:
+
+- Product
+- Movement type
+- Quantity
+- Reason
+- Related sale
+- Date
+
+The system supports both:
+
+```text
+ENTRADA
+SALIDA
+```
+
+Inventory can also be replenished using multiple products in a single operation, making stock updates faster during restocking.
+
+---
+
+## 🥭 Product Management
+
+Products contain information including:
+
+- Product name
+- Description
+- Selling price
+- Current cost
+- Current stock
+- Active status
+- Registration date
+
+The system currently supports different Mangazo product presentations, including natural and chili-seasoned dehydrated mango.
+
+---
+
+## 💸 Expense Management
+
+Business expenses can be registered separately from product sales.
+
+Each expense includes:
+
+- Concept
+- Category
+- Description
+- Amount
+- Date
+
+Separating expenses from sales allows the reporting layer to provide a more accurate view of business performance.
+
+---
+
+## 📈 Profit Tracking
+
+Profit information is calculated using the historical cost of each product at the moment of the sale.
+
+The database automatically calculates values such as:
+
+```text
+Subtotal =
+Quantity × Unit Price
+
+Total Cost =
+Quantity × Unit Cost
+
+Gross Profit =
+Quantity × (Unit Price - Unit Cost)
+```
+
+These values are implemented using SQL Server computed columns.
+
+This approach ensures that calculated financial values remain consistent at the database level.
+
+---
+
+## 📑 Reports
+
+The reporting module consolidates information from:
+
+- Sales
+- Sale details
+- Products
+- Inventory
+- Expenses
+
+This allows Mangazo to analyze operational and financial information from a centralized source.
+
+---
+
+## 🗄️ Database Structure
+
+The core database includes tables such as:
+
+```text
+Productos
+    │
+    ├──────────────┐
+    │              │
+    ▼              ▼
+DetalleVenta   MovimientoInventario
+    │              │
+    └──────┐  ┌────┘
+           ▼  ▼
+           Ventas
+
+Gastos
+```
+
+### Main Entities
+
+#### Productos
+
+Stores the product catalog, pricing, cost, stock, and status.
+
+#### Ventas
+
+Stores the main information for each sale.
+
+#### DetalleVenta
+
+Stores the products and quantities associated with each sale.
+
+#### MovimientoInventario
+
+Provides an audit trail for stock entries and exits.
+
+#### Gastos
+
+Stores operational business expenses.
+
+---
+
+## 🔐 Security
+
+Sensitive database credentials are **not stored in the repository**.
+
+During local development, the ASP.NET Core application uses **.NET User Secrets** to store the Azure SQL connection string.
+
+Example configuration:
+
+```bash
+dotnet user-secrets set \
+"ConnectionStrings:MangazoConnection" \
+"YOUR_CONNECTION_STRING"
+```
+
+Environment and secret files are excluded through `.gitignore`.
+
+---
+
+## 📁 Project Structure
+
+```text
+Mangazo/
+│
+├── Mangazo.API/
+│   ├── Controllers/
+│   ├── Data/
+│   ├── DTOs/
+│   ├── Models/
+│   ├── Program.cs
+│   └── Mangazo.API.csproj
+│
+├── mangazo.web/
+│   ├── public/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── gastos/
+│   │   │   ├── inventario/
+│   │   │   ├── productos/
+│   │   │   ├── reportes/
+│   │   │   └── ventas/
+│   │   └── components/
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── .gitignore
+└── README.md
+```
+
+---
+
+## 🚀 Running the Project Locally
+
+### Prerequisites
+
+Make sure you have installed:
+
+- .NET SDK
+- Node.js
+- npm
+- Access to a SQL Server or Azure SQL database
+
+### 1. Clone the repository
+
+```bash
+git clone YOUR_REPOSITORY_URL
+cd mangazo-management-system
+```
+
+### 2. Configure the backend connection string
+
+Navigate to the API:
+
+```bash
+cd Mangazo.API
+```
+
+Configure the connection string using User Secrets:
+
+```bash
+dotnet user-secrets set \
+"ConnectionStrings:MangazoConnection" \
+"YOUR_CONNECTION_STRING"
+```
+
+### 3. Run the backend
+
+```bash
+dotnet restore
+dotnet run
+```
+
+The API will run locally on the configured ASP.NET Core port.
+
+### 4. Run the frontend
+
+Open another terminal:
+
+```bash
+cd mangazo.web
+npm install
+npm run dev
+```
+
+Then open:
+
+```text
+http://localhost:3000
+```
+
+---
+
+## 💡 Why I Built This Project
+
+Mangazo Management System was created to solve an actual business need.
+
+As the business began operating, tracking sales, inventory, expenses, and profitability manually became increasingly difficult.
+
+Instead of using disconnected spreadsheets or manual records, I designed and developed a custom full-stack application tailored to the operation.
+
+This project allowed me to apply software engineering concepts to a real business environment, including:
+
+- Relational database design
+- REST API development
+- Frontend development
+- Inventory consistency
+- Transaction handling
+- Financial calculations
+- Data validation
+- Error handling
+- Cloud database integration
+- Git version control
+
+---
+
+## 🧠 Technical Challenges
+
+Some of the most interesting challenges addressed during development include:
+
+### Inventory consistency
+
+Sales, corrections, and cancellations must update inventory without losing historical information.
+
+### Database transactions
+
+Operations involving multiple database changes use transactions to prevent partially completed operations.
+
+### Historical product costs
+
+The cost associated with a sale must remain accurate even if the product's current cost changes later.
+
+### Computed financial columns
+
+SQL Server computed columns are used for subtotal, total cost, and gross profit calculations.
+
+### Multi-product operations
+
+Both sales and inventory operations support multiple products in a single workflow.
+
+---
+
+## 🗺️ Future Improvements
+
+Potential future additions include:
+
+- Customer management
+- Courtesy/sample product tracking
+- Authentication and user roles
+- Advanced analytics
+- Date-based report filters
+- Exportable reports
+- Responsive mobile improvements
+- Automated database migrations
+- Production deployment
+
+---
+
+## 👨‍💻 Author
+
+**David Arredondo**
+
+Full-Stack Software Development Project
+
+Built as a real-world management platform for Mangazo.
+
+---
+
+## 📄 License
+
+This project is intended primarily for portfolio and educational purposes.

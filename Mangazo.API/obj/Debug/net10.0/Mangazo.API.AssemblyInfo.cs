@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Mangazo.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8b5288aed0ba1d0d45684712f877325efdb721ae")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d63762672489b1c15ce968cb9619c503260d67d5")]
 [assembly: System.Reflection.AssemblyProductAttribute("Mangazo.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Mangazo.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
