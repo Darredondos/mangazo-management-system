@@ -1,0 +1,6 @@
+@Mangazo.API_HostAddress = http://localhost:5152
+
+GET {{Mangazo.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
