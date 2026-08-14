@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Next.js / Node
+**/node_modules/
+**/.next/
+**/out/
+**/.turbo/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Recovery / backups
+Mangazo.Recovery*/
+Recovery*/
+Backups/
+DisabledControllers/
+*.backup.cs
+*.roto.cs
