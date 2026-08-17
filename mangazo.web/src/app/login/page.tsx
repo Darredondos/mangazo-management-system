@@ -3,12 +3,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API_URL = "http://localhost:5152";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:5152";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  // Dejamos mangadmin precargado para facilitar el acceso
   const [usuario, setUsuario] = useState("mangadmin");
   const [password, setPassword] = useState("");
 
@@ -39,19 +40,18 @@ export default function LoginPage() {
           },
           body: JSON.stringify({
             usuario: usuario.trim(),
-            password: password,
+            password,
           }),
         }
       );
 
-      // Si la API devuelve error
       if (!response.ok) {
         let mensaje = "No fue posible iniciar sesión.";
 
         try {
           const errorData = await response.json();
 
-          if (errorData.mensaje) {
+          if (errorData?.mensaje) {
             mensaje = errorData.mensaje;
           }
         } catch {
@@ -71,7 +71,6 @@ export default function LoginPage() {
         );
       }
 
-      // Guardamos la sesión
       localStorage.setItem(
         "mangazo_token",
         data.token
@@ -89,7 +88,6 @@ export default function LoginPage() {
         data.usuario ?? usuario
       );
 
-      // Entramos al sistema
       router.replace("/");
       router.refresh();
 
@@ -98,12 +96,14 @@ export default function LoginPage() {
 
       if (err instanceof TypeError) {
         setError(
-          "No se pudo conectar con la API. Verifica que Mangazo.API esté ejecutándose."
+          "No se pudo conectar con la API."
         );
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Ocurrió un error inesperado.");
+        setError(
+          "Ocurrió un error inesperado."
+        );
       }
 
     } finally {
@@ -113,9 +113,11 @@ export default function LoginPage() {
 
   return (
     <main className="login-page">
+
       <div className="login-card">
 
         <div className="login-brand">
+
           <img
             src="/images/mangazo_logo.png"
             alt="Mangazo"
@@ -123,23 +125,36 @@ export default function LoginPage() {
           />
 
           <div>
-            <h1>MANGAZO</h1>
-            <span>BUSINESS</span>
+
+            <h1>
+              MANGAZO
+            </h1>
+
+            <span>
+              BUSINESS
+            </span>
+
           </div>
+
         </div>
 
         <div className="login-header">
-          <h2>Iniciar sesión</h2>
+
+          <h2>
+            Iniciar sesión
+          </h2>
 
           <p>
             Ingresa tus credenciales para acceder al sistema.
           </p>
+
         </div>
 
         <form
           onSubmit={iniciarSesion}
           className="login-form"
         >
+
           <div className="login-field">
 
             <label htmlFor="usuario">
@@ -152,7 +167,9 @@ export default function LoginPage() {
               type="text"
               value={usuario}
               onChange={(e) =>
-                setUsuario(e.target.value)
+                setUsuario(
+                  e.target.value
+                )
               }
               placeholder="Usuario"
               autoComplete="username"
@@ -173,7 +190,9 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) =>
-                setPassword(e.target.value)
+                setPassword(
+                  e.target.value
+                )
               }
               placeholder="Contraseña"
               autoComplete="current-password"
@@ -199,7 +218,9 @@ export default function LoginPage() {
           </button>
 
         </form>
+
       </div>
+
     </main>
   );
 }
