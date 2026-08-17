@@ -54,10 +54,13 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("mangazoWeb", policy =>
+    options.AddPolicy("MangazoWeb", policy =>
     {
         policy
-            .WithOrigins("http://localhost:3000")
+            .WithOrigins(
+                "https://mangazo-management-system.vercel.app",
+                "http://localhost:3000"
+            )
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -72,7 +75,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("mangazoWeb");
+app.UseCors("MangazoWeb");
 
 app.UseAuthentication();
 app.UseAuthorization();
