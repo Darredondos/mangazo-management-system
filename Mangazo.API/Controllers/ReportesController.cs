@@ -79,7 +79,7 @@ public class ReportesController : ControllerBase
             .ToListAsync();
 
         // =====================================================
-        // GASTOS
+        // GASTOS / SALIDAS
         // =====================================================
 
         var gastos = await _context.Gastos
@@ -91,23 +91,76 @@ public class ReportesController : ControllerBase
             .ToListAsync();
 
         // =====================================================
+        // CLASIFICACIÓN DE GASTOS
+        // =====================================================
+
+        // Estas categorías representan compras que se convierten
+        // en producto o inventario.
+        //
+        // No deben descontarse otra vez de la utilidad neta,
+        // porque el costo de lo que ya se vendió está reflejado
+        // en DetalleVenta.CostoTotal.
+        var categoriasInventario = new[]
+        {
+            "PRODUCTOS",
+            "EMPAQUE",
+            "ETIQUETAS"
+        };
+
+        var comprasInventario =
+            gastos
+                .Where(g =>
+                    categoriasInventario.Contains(
+                        (g.Categoria ?? string.Empty)
+                            .Trim()
+                            .ToUpper()
+                    )
+                )
+                .Sum(g => g.Monto);
+
+        // Todo lo que NO sea inventario se considera gasto operativo.
+        //
+        // Actualmente aquí entraría PUBLICIDAD.
+        // En el futuro también podrían entrar:
+        // GASOLINA, SERVICIOS, COMISIONES, etc.
+        var gastosOperativos =
+            gastos
+                .Where(g =>
+                    !categoriasInventario.Contains(
+                        (g.Categoria ?? string.Empty)
+                            .Trim()
+                            .ToUpper()
+                    )
+                )
+                .Sum(g => g.Monto);
+
+        // Total de dinero que salió del negocio durante el periodo.
+        // Este dato sirve para flujo de efectivo,
+        // NO para calcular directamente la utilidad.
+        var totalSalidas =
+            gastos.Sum(g => g.Monto);
+
+        // =====================================================
         // RESUMEN FINANCIERO
         // =====================================================
 
         var ingresos =
             ventas.Sum(v => v.TotalVenta);
 
+        // Costo únicamente de los productos YA vendidos.
         var costoProducto =
             detalles.Sum(d => d.CostoTotal);
 
+        // Ingresos menos costo del producto vendido.
         var utilidadBruta =
             detalles.Sum(d => d.GananciaBruta);
 
-        var totalGastos =
-            gastos.Sum(g => g.Monto);
-
+        // Utilidad real del periodo.
+        //
+        // No volvemos a descontar compras de producto,
+        // empaques ni etiquetas.
         var utilidadNeta =
-            utilidadBruta - totalGastos;
+            utilidadBruta - gastosOperativos;
 
         var bolsasVendidas =
             detalles.Sum(d => d.Cantidad);
@@ -115,6 +168,11 @@ public class ReportesController : ControllerBase
         var ticketPromedio =
             ventas.Count > 0
                 ? ingresos / ventas.Count
+                : 0;
+
+        var margenBruto =
+            ingresos > 0
+                ? (utilidadBruta / ingresos) * 100
                 : 0;
 
         var margenNeto =
@@ -147,6 +205,9 @@ public class ReportesController : ControllerBase
                     ventas =
                         g.Sum(x => x.Subtotal),
 
+                    costo =
+                        g.Sum(x => x.CostoTotal),
+
                     ganancia =
                         g.Sum(x => x.GananciaBruta)
                 })
@@ -173,7 +234,7 @@ public class ReportesController : ControllerBase
                 .ToList();
 
         // =====================================================
-        // GASTOS POR CATEGORÍA
+        // SALIDAS POR CATEGORÍA
         // =====================================================
 
         var gastosCategoria =
@@ -184,7 +245,16 @@ public class ReportesController : ControllerBase
                     categoria = g.Key,
 
                     total =
-                        g.Sum(x => x.Monto)
+                        g.Sum(x => x.Monto),
+
+                    tipo =
+                        categoriasInventario.Contains(
+                            (g.Key ?? string.Empty)
+                                .Trim()
+                                .ToUpper()
+                        )
+                            ? "INVENTARIO"
+                            : "OPERATIVO"
                 })
                 .OrderByDescending(x => x.total)
                 .ToList();
@@ -214,8 +284,11 @@ public class ReportesController : ControllerBase
 
                 utilidadBruta,
 
-                gastos =
-                    totalGastos,
+                margenBruto,
+
+                // Gastos que sí afectan directamente
+                // la utilidad neta.
+                gastosOperativos,
 
                 utilidadNeta,
 
@@ -223,7 +296,12 @@ public class ReportesController : ControllerBase
 
                 bolsasVendidas,
 
-                ticketPromedio
+                ticketPromedio,
+
+                // Información de flujo.
+                comprasInventario,
+
+                totalSalidas
             },
 
             productoEstrella =
