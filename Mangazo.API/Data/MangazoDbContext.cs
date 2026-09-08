@@ -30,6 +30,10 @@ public partial class MangazoDbContext : DbContext
 
     public virtual DbSet<Venta> Ventas { get; set; }
 
+    public virtual DbSet<Finanza> Finanzas { get; set; }
+
+    public virtual DbSet<MovimientoFinanciero> MovimientosFinancieros { get; set; }
+
     // =========================================================
     // CONFIGURACIÓN DEL MODELO
     // =========================================================
@@ -55,9 +59,6 @@ public partial class MangazoDbContext : DbContext
 
             // =================================================
             // COLUMNAS CALCULADAS POR SQL SERVER
-            //
-            // Estas columnas NO se insertan ni actualizan
-            // manualmente desde Entity Framework.
             // =================================================
 
             var subtotal = entity
@@ -262,6 +263,79 @@ public partial class MangazoDbContext : DbContext
 
             entity.Property(e => e.TotalVenta)
                 .HasColumnType("decimal(10, 2)");
+        });
+
+        // =====================================================
+        // FINANZAS
+        // =====================================================
+
+        modelBuilder.Entity<Finanza>(entity =>
+        {
+            entity.HasKey(e => e.IdFinanza);
+
+            entity.ToTable("Finanzas");
+
+            entity.Property(e => e.IdFinanza)
+                .HasColumnName("IdFinanza");
+
+            entity.Property(e => e.SaldoCuenta)
+                .HasColumnType("decimal(10, 2)");
+
+            entity.Property(e => e.FechaActualizacion)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+        });
+
+        // =====================================================
+        // MOVIMIENTOS FINANCIEROS
+        // =====================================================
+
+        modelBuilder.Entity<MovimientoFinanciero>(entity =>
+        {
+            entity.HasKey(e => e.IdMovimientoFinanciero);
+
+            entity.ToTable("MovimientosFinancieros");
+
+            entity.Property(e => e.Tipo)
+                .HasMaxLength(30)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Concepto)
+                .HasMaxLength(150)
+                .IsUnicode(false);
+
+            entity.Property(e => e.Monto)
+                .HasColumnType("decimal(10, 2)");
+
+            entity.Property(e => e.FechaMovimiento)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.Property(e => e.Observaciones)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+
+            // =================================================
+            // RELACIÓN CON VENTA
+            // =================================================
+
+            entity.HasOne(d => d.IdVentaNavigation)
+                .WithMany()
+                .HasForeignKey(d => d.IdVenta)
+                .HasConstraintName(
+                    "FK_MovimientoFinanciero_Venta"
+                );
+
+            // =================================================
+            // RELACIÓN CON GASTO
+            // =================================================
+
+            entity.HasOne(d => d.IdGastoNavigation)
+                .WithMany()
+                .HasForeignKey(d => d.IdGasto)
+                .HasConstraintName(
+                    "FK_MovimientoFinanciero_Gasto"
+                );
         });
 
         OnModelCreatingPartial(modelBuilder);

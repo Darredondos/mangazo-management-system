@@ -357,6 +357,22 @@ public class VentasController : ControllerBase
                     item.Cantidad;
             }
 
+            // =================================================
+            // MOVIMIENTO FINANCIERO - VENTA
+            // =================================================
+            var movimientoFinanciero = new MovimientoFinanciero
+            {
+                Tipo = "VENTA",
+                Concepto = $"Venta #{venta.IdVenta}",
+                Monto = venta.TotalVenta,
+                FechaMovimiento = DateTime.Now,
+                IdVenta = venta.IdVenta,
+                IdGasto = null,
+                Observaciones = $"Venta registrada por {venta.MetodoPago}"
+            };
+
+            _context.MovimientosFinancieros.Add(movimientoFinanciero);
+
             await _context.SaveChangesAsync();
 
             await transaction.CommitAsync();
@@ -633,6 +649,7 @@ public class VentasController : ControllerBase
                     venta.DetalleVenta
                 );
 
+            decimal totalVentaAnterior = venta.TotalVenta;
             decimal totalVenta = 0;
 
             // =================================================
@@ -731,6 +748,31 @@ public class VentasController : ControllerBase
 
             venta.TotalVenta =
                 totalVenta;
+
+            // =================================================
+            // AJUSTE FINANCIERO POR MODIFICACIÓN
+            // =================================================
+            decimal diferenciaVenta = totalVenta - totalVentaAnterior;
+
+            if (diferenciaVenta != 0)
+            {
+                var ajusteFinanciero = new MovimientoFinanciero
+                {
+                    Tipo = diferenciaVenta > 0
+                        ? "AJUSTE_ENTRADA"
+                        : "AJUSTE_SALIDA",
+                    Concepto = $"Corrección Venta #{venta.IdVenta}",
+                    Monto = Math.Abs(diferenciaVenta),
+                    FechaMovimiento = DateTime.Now,
+                    IdVenta = venta.IdVenta,
+                    IdGasto = null,
+                    Observaciones =
+                        $"Total anterior: {totalVentaAnterior:C2}. " +
+                        $"Nuevo total: {totalVenta:C2}."
+                };
+
+                _context.MovimientosFinancieros.Add(ajusteFinanciero);
+            }
 
             await _context.SaveChangesAsync();
 
@@ -856,6 +898,22 @@ public class VentasController : ControllerBase
 
             venta.Estado =
                 "CANCELADA";
+
+            // =================================================
+            // REVERSA FINANCIERA POR CANCELACIÓN
+            // =================================================
+            var reversaFinanciera = new MovimientoFinanciero
+            {
+                Tipo = "AJUSTE_SALIDA",
+                Concepto = $"Cancelación Venta #{venta.IdVenta}",
+                Monto = venta.TotalVenta,
+                FechaMovimiento = DateTime.Now,
+                IdVenta = venta.IdVenta,
+                IdGasto = null,
+                Observaciones = "Reversa total por cancelación de venta."
+            };
+
+            _context.MovimientosFinancieros.Add(reversaFinanciera);
 
             await _context.SaveChangesAsync();
 

@@ -13,6 +13,13 @@ public class GastosController : ControllerBase
 {
     private readonly MangazoDbContext _context;
 
+    private static readonly string[] CategoriasInventario =
+    {
+        "PRODUCTOS",
+        "EMPAQUE",
+        "ETIQUETAS"
+    };
+
     public GastosController(MangazoDbContext context)
     {
         _context = context;
@@ -52,13 +59,15 @@ public class GastosController : ControllerBase
     {
         var gasto = await _context.Gastos
             .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.IdGasto == id);
+            .FirstOrDefaultAsync(g =>
+                g.IdGasto == id);
 
         if (gasto == null)
         {
             return NotFound(new
             {
-                mensaje = $"No existe el gasto #{id}."
+                mensaje =
+                    $"No existe el gasto #{id}."
             });
         }
 
@@ -67,25 +76,30 @@ public class GastosController : ControllerBase
 
     // =========================================================
     // POST /api/gastos
+    // CREAR GASTO
     // =========================================================
 
     [HttpPost]
     public async Task<IActionResult> CrearGasto(
         CrearGastoRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Concepto))
+        if (string.IsNullOrWhiteSpace(
+            request.Concepto))
         {
             return BadRequest(new
             {
-                mensaje = "El concepto es obligatorio."
+                mensaje =
+                    "El concepto es obligatorio."
             });
         }
 
-        if (string.IsNullOrWhiteSpace(request.Categoria))
+        if (string.IsNullOrWhiteSpace(
+            request.Categoria))
         {
             return BadRequest(new
             {
-                mensaje = "La categoría es obligatoria."
+                mensaje =
+                    "La categoría es obligatoria."
             });
         }
 
@@ -93,44 +107,114 @@ public class GastosController : ControllerBase
         {
             return BadRequest(new
             {
-                mensaje = "El monto debe ser mayor a cero."
+                mensaje =
+                    "El monto debe ser mayor a cero."
             });
         }
 
-        var gasto = new Gasto
+        var categoria = request.Categoria
+            .Trim()
+            .ToUpperInvariant();
+
+        await using var transaction =
+            await _context.Database
+                .BeginTransactionAsync();
+
+        try
         {
-            Concepto = request.Concepto.Trim(),
+            // =================================================
+            // CREAR GASTO
+            // =================================================
 
-            Descripcion = string.IsNullOrWhiteSpace(
-                request.Descripcion
-            )
-                ? null
-                : request.Descripcion.Trim(),
+            var gasto = new Gasto
+            {
+                Concepto =
+                    request.Concepto.Trim(),
 
-            Categoria = request.Categoria
-                .Trim()
-                .ToUpperInvariant(),
+                Descripcion =
+                    string.IsNullOrWhiteSpace(
+                        request.Descripcion
+                    )
+                        ? null
+                        : request.Descripcion.Trim(),
 
-            Monto = request.Monto,
+                Categoria =
+                    categoria,
 
-            FechaGasto =
-                request.FechaGasto ?? DateTime.Now
-        };
+                Monto =
+                    request.Monto,
 
-        _context.Gastos.Add(gasto);
+                FechaGasto =
+                    request.FechaGasto ??
+                    DateTime.Now
+            };
 
-        await _context.SaveChangesAsync();
+            _context.Gastos.Add(gasto);
 
-        return Ok(new
+            // Necesitamos IdGasto para relacionarlo
+            // con el movimiento financiero.
+            await _context.SaveChangesAsync();
+
+            // =================================================
+            // MOVIMIENTO FINANCIERO
+            // =================================================
+
+            var tipoMovimiento =
+                EsCategoriaInventario(categoria)
+                    ? "COMPRA_INVENTARIO"
+                    : "GASTO";
+
+            var movimientoFinanciero =
+                new MovimientoFinanciero
+                {
+                    Tipo =
+                        tipoMovimiento,
+
+                    Concepto =
+                        gasto.Concepto,
+
+                    Monto =
+                        gasto.Monto,
+
+                    FechaMovimiento =
+                        gasto.FechaGasto,
+
+                    IdVenta =
+                        null,
+
+                    IdGasto =
+                        gasto.IdGasto,
+
+                    Observaciones =
+                        $"Gasto registrado en categoría {gasto.Categoria}"
+                };
+
+            _context.MovimientosFinancieros
+                .Add(movimientoFinanciero);
+
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
+            return Ok(new
+            {
+                mensaje =
+                    "Gasto registrado correctamente.",
+
+                gasto.IdGasto,
+                gasto.Concepto,
+                gasto.Descripcion,
+                gasto.Categoria,
+                gasto.Monto,
+                gasto.FechaGasto
+            });
+        }
+        catch
         {
-            mensaje = "Gasto registrado correctamente.",
-            gasto.IdGasto,
-            gasto.Concepto,
-            gasto.Descripcion,
-            gasto.Categoria,
-            gasto.Monto,
-            gasto.FechaGasto
-        });
+            await transaction.RollbackAsync();
+
+            throw;
+        }
     }
 
     // =========================================================
@@ -143,30 +227,23 @@ public class GastosController : ControllerBase
         int id,
         CrearGastoRequest request)
     {
-        var gasto = await _context.Gastos
-            .FirstOrDefaultAsync(g => g.IdGasto == id);
-
-        if (gasto == null)
-        {
-            return NotFound(new
-            {
-                mensaje = $"No existe el gasto #{id}."
-            });
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Concepto))
+        if (string.IsNullOrWhiteSpace(
+            request.Concepto))
         {
             return BadRequest(new
             {
-                mensaje = "El concepto es obligatorio."
+                mensaje =
+                    "El concepto es obligatorio."
             });
         }
 
-        if (string.IsNullOrWhiteSpace(request.Categoria))
+        if (string.IsNullOrWhiteSpace(
+            request.Categoria))
         {
             return BadRequest(new
             {
-                mensaje = "La categoría es obligatoria."
+                mensaje =
+                    "La categoría es obligatoria."
             });
         }
 
@@ -174,46 +251,182 @@ public class GastosController : ControllerBase
         {
             return BadRequest(new
             {
-                mensaje = "El monto debe ser mayor a cero."
+                mensaje =
+                    "El monto debe ser mayor a cero."
             });
         }
 
-        gasto.Concepto =
-            request.Concepto.Trim();
+        await using var transaction =
+            await _context.Database
+                .BeginTransactionAsync();
 
-        gasto.Descripcion =
-            string.IsNullOrWhiteSpace(request.Descripcion)
-                ? null
-                : request.Descripcion.Trim();
-
-        gasto.Categoria =
-            request.Categoria
-                .Trim()
-                .ToUpperInvariant();
-
-        gasto.Monto =
-            request.Monto;
-
-        if (request.FechaGasto.HasValue)
+        try
         {
-            gasto.FechaGasto =
-                request.FechaGasto.Value;
+            var gasto = await _context.Gastos
+                .FirstOrDefaultAsync(g =>
+                    g.IdGasto == id);
+
+            if (gasto == null)
+            {
+                await transaction.RollbackAsync();
+
+                return NotFound(new
+                {
+                    mensaje =
+                        $"No existe el gasto #{id}."
+                });
+            }
+
+            // =================================================
+            // GUARDAR VALORES ANTERIORES
+            // =================================================
+
+            decimal montoAnterior =
+                gasto.Monto;
+
+            string categoriaAnterior =
+                (gasto.Categoria ?? string.Empty)
+                    .Trim()
+                    .ToUpperInvariant();
+
+            string categoriaNueva =
+                request.Categoria
+                    .Trim()
+                    .ToUpperInvariant();
+
+            // =================================================
+            // ACTUALIZAR GASTO
+            // =================================================
+
+            gasto.Concepto =
+                request.Concepto.Trim();
+
+            gasto.Descripcion =
+                string.IsNullOrWhiteSpace(
+                    request.Descripcion
+                )
+                    ? null
+                    : request.Descripcion.Trim();
+
+            gasto.Categoria =
+                categoriaNueva;
+
+            gasto.Monto =
+                request.Monto;
+
+            if (request.FechaGasto.HasValue)
+            {
+                gasto.FechaGasto =
+                    request.FechaGasto.Value;
+            }
+
+            // =================================================
+            // AJUSTE FINANCIERO
+            // =================================================
+
+            decimal diferencia =
+                request.Monto -
+                montoAnterior;
+
+            if (diferencia > 0)
+            {
+                // El gasto aumentó.
+                // Hay una salida adicional de dinero.
+
+                var tipoMovimiento =
+                    EsCategoriaInventario(
+                        categoriaNueva
+                    )
+                        ? "COMPRA_INVENTARIO"
+                        : "GASTO";
+
+                var movimiento =
+                    new MovimientoFinanciero
+                    {
+                        Tipo =
+                            tipoMovimiento,
+
+                        Concepto =
+                            $"Ajuste gasto #{gasto.IdGasto}",
+
+                        Monto =
+                            diferencia,
+
+                        FechaMovimiento =
+                            DateTime.Now,
+
+                        IdVenta =
+                            null,
+
+                        IdGasto =
+                            gasto.IdGasto,
+
+                        Observaciones =
+                            $"Monto aumentado de {montoAnterior:C2} " +
+                            $"a {request.Monto:C2}."
+                    };
+
+                _context.MovimientosFinancieros
+                    .Add(movimiento);
+            }
+            else if (diferencia < 0)
+            {
+                // El gasto disminuyó.
+                // Regresamos la diferencia al saldo.
+
+                var movimiento =
+                    new MovimientoFinanciero
+                    {
+                        Tipo =
+                            "AJUSTE_ENTRADA",
+
+                        Concepto =
+                            $"Ajuste gasto #{gasto.IdGasto}",
+
+                        Monto =
+                            Math.Abs(diferencia),
+
+                        FechaMovimiento =
+                            DateTime.Now,
+
+                        IdVenta =
+                            null,
+
+                        IdGasto =
+                            gasto.IdGasto,
+
+                        Observaciones =
+                            $"Monto reducido de {montoAnterior:C2} " +
+                            $"a {request.Monto:C2}."
+                    };
+
+                _context.MovimientosFinancieros
+                    .Add(movimiento);
+            }
+
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
+            return Ok(new
+            {
+                mensaje =
+                    $"Registro #{gasto.IdGasto} actualizado correctamente.",
+
+                gasto.IdGasto,
+                gasto.Concepto,
+                gasto.Descripcion,
+                gasto.Categoria,
+                gasto.Monto,
+                gasto.FechaGasto
+            });
         }
-
-        await _context.SaveChangesAsync();
-
-        return Ok(new
+        catch
         {
-            mensaje =
-                $"Registro #{gasto.IdGasto} actualizado correctamente.",
+            await transaction.RollbackAsync();
 
-            gasto.IdGasto,
-            gasto.Concepto,
-            gasto.Descripcion,
-            gasto.Categoria,
-            gasto.Monto,
-            gasto.FechaGasto
-        });
+            throw;
+        }
     }
 
     // =========================================================
@@ -221,28 +434,126 @@ public class GastosController : ControllerBase
     // =========================================================
 
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> EliminarGasto(int id)
+    public async Task<IActionResult> EliminarGasto(
+        int id)
     {
-        var gasto = await _context.Gastos
-            .FirstOrDefaultAsync(g => g.IdGasto == id);
+        await using var transaction =
+            await _context.Database
+                .BeginTransactionAsync();
 
-        if (gasto == null)
+        try
         {
-            return NotFound(new
+            var gasto = await _context.Gastos
+                .FirstOrDefaultAsync(g =>
+                    g.IdGasto == id);
+
+            if (gasto == null)
             {
-                mensaje = $"No existe el gasto #{id}."
+                await transaction.RollbackAsync();
+
+                return NotFound(new
+                {
+                    mensaje =
+                        $"No existe el gasto #{id}."
+                });
+            }
+
+            // =================================================
+            // DESVINCULAR MOVIMIENTOS ANTERIORES
+            //
+            // Esto permite conservar el historial financiero
+            // aunque eliminemos el registro de Gastos.
+            // =================================================
+
+            var movimientosRelacionados =
+                await _context
+                    .MovimientosFinancieros
+                    .Where(m =>
+                        m.IdGasto == id)
+                    .ToListAsync();
+
+            foreach (
+                var movimiento in
+                    movimientosRelacionados)
+            {
+                movimiento.IdGasto = null;
+            }
+
+            // =================================================
+            // REVERSA FINANCIERA
+            // =================================================
+
+            var reversa =
+                new MovimientoFinanciero
+                {
+                    Tipo =
+                        "AJUSTE_ENTRADA",
+
+                    Concepto =
+                        $"Eliminación gasto #{gasto.IdGasto}",
+
+                    Monto =
+                        gasto.Monto,
+
+                    FechaMovimiento =
+                        DateTime.Now,
+
+                    IdVenta =
+                        null,
+
+                    IdGasto =
+                        null,
+
+                    Observaciones =
+                        $"Se eliminó el gasto '{gasto.Concepto}' " +
+                        $"de categoría {gasto.Categoria}."
+                };
+
+            _context.MovimientosFinancieros
+                .Add(reversa);
+
+            // =================================================
+            // ELIMINAR GASTO
+            // =================================================
+
+            _context.Gastos.Remove(gasto);
+
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
+            return Ok(new
+            {
+                mensaje =
+                    $"Registro #{id} eliminado correctamente."
             });
         }
-
-        _context.Gastos.Remove(gasto);
-
-        await _context.SaveChangesAsync();
-
-        return Ok(new
+        catch
         {
-            mensaje =
-                $"Registro #{id} eliminado correctamente."
-        });
+            await transaction.RollbackAsync();
+
+            throw;
+        }
+    }
+
+    // =========================================================
+    // HELPERS
+    // =========================================================
+
+    private static bool EsCategoriaInventario(
+        string? categoria)
+    {
+        if (string.IsNullOrWhiteSpace(
+            categoria))
+        {
+            return false;
+        }
+
+        return CategoriasInventario.Contains(
+            categoria
+                .Trim()
+                .ToUpperInvariant()
+        );
     }
 }
 
