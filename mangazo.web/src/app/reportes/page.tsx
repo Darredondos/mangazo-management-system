@@ -104,9 +104,8 @@ export default function ReportesPage() {
     useState("");
 
   // =========================================================
-  // SALDO EN CUENTA
+  // CONCILIACIÓN
   // =========================================================
-
 
   const [nuevoSaldo, setNuevoSaldo] =
     useState("");
@@ -139,8 +138,38 @@ export default function ReportesPage() {
         );
       }
 
-      const data: Reporte =
-        await response.json();
+      const raw = await response.json();
+
+      const data: Reporte = {
+        periodo: {
+          desde: raw?.periodo?.desde ?? desde,
+          hasta: raw?.periodo?.hasta ?? hasta,
+        },
+        resumen: {
+          ventas: Number(raw?.resumen?.ventas ?? 0),
+          ingresos: Number(raw?.resumen?.ingresos ?? 0),
+          costoProducto: Number(raw?.resumen?.costoProducto ?? 0),
+          utilidadBruta: Number(raw?.resumen?.utilidadBruta ?? 0),
+          margenBruto: Number(raw?.resumen?.margenBruto ?? 0),
+          gastosOperativos: Number(raw?.resumen?.gastosOperativos ?? 0),
+          utilidadNeta: Number(raw?.resumen?.utilidadNeta ?? 0),
+          margenNeto: Number(raw?.resumen?.margenNeto ?? 0),
+          bolsasVendidas: Number(raw?.resumen?.bolsasVendidas ?? 0),
+          ticketPromedio: Number(raw?.resumen?.ticketPromedio ?? 0),
+          comprasInventario: Number(raw?.resumen?.comprasInventario ?? 0),
+          totalSalidas: Number(raw?.resumen?.totalSalidas ?? 0),
+        },
+        productoEstrella: raw?.productoEstrella ?? null,
+        productos: Array.isArray(raw?.productos)
+          ? raw.productos
+          : [],
+        metodosPago: Array.isArray(raw?.metodosPago)
+          ? raw.metodosPago
+          : [],
+        gastosCategoria: Array.isArray(raw?.gastosCategoria)
+          ? raw.gastosCategoria
+          : [],
+      };
 
       setReporte(data);
     } catch (err) {
@@ -153,10 +182,6 @@ export default function ReportesPage() {
       setCargando(false);
     }
   };
-
-  // =========================================================
-  // CARGAR SALDO
-  // =========================================================
 
   // =========================================================
   // RESUMEN FINANCIERO
@@ -174,8 +199,27 @@ export default function ReportesPage() {
         );
       }
 
-      const data: FinanzasResumen =
-        await response.json();
+      const raw = await response.json();
+
+      const data: FinanzasResumen = {
+        entradas: Number(raw?.entradas ?? 0),
+        salidas: Number(raw?.salidas ?? 0),
+        saldoCalculado: Number(raw?.saldoCalculado ?? 0),
+        saldoReal:
+          raw?.saldoReal == null
+            ? null
+            : Number(raw.saldoReal),
+        fechaSaldoReal:
+          raw?.fechaSaldoReal ?? null,
+        diferencia:
+          raw?.diferencia == null
+            ? null
+            : Number(raw.diferencia),
+        ultimosMovimientos:
+          Array.isArray(raw?.ultimosMovimientos)
+            ? raw.ultimosMovimientos
+            : [],
+      };
 
       setFinanzas(data);
     } catch (err) {
@@ -269,12 +313,12 @@ export default function ReportesPage() {
   // =========================================================
 
   const formatearDinero = (
-    cantidad: number
+    cantidad: number | null | undefined
   ) =>
     new Intl.NumberFormat("es-MX", {
       style: "currency",
       currency: "MXN",
-    }).format(cantidad);
+    }).format(Number(cantidad ?? 0));
 
   const formatearFechaSaldo = (
     fecha: string | null
@@ -297,13 +341,13 @@ export default function ReportesPage() {
   // =========================================================
 
   const maxProducto = useMemo(() => {
-    if (!reporte?.productos.length) {
+    if (!reporte?.productos?.length) {
       return 1;
     }
 
     return Math.max(
-      ...reporte.productos.map(
-        (producto) => producto.cantidad
+      ...(reporte.productos ?? []).map(
+        (producto) => Number(producto.cantidad ?? 0)
       ),
       1
     );
@@ -430,9 +474,9 @@ export default function ReportesPage() {
                 </p>
 
                 <p className="mt-2 text-xs text-[#737A68]">
-                  {reporte.resumen.margenBruto.toFixed(
-                    1
-                  )}
+                  {Number(
+                    reporte.resumen.margenBruto ?? 0
+                  ).toFixed(1)}
                   % margen bruto
                 </p>
               </div>
@@ -460,7 +504,7 @@ export default function ReportesPage() {
 
               <div
                 className={`rounded-3xl p-6 text-white shadow-sm ${
-                  reporte.resumen.utilidadNeta >= 0
+                  Number(reporte.resumen.utilidadNeta ?? 0) >= 0
                     ? "bg-[#4E5A36]"
                     : "bg-red-600"
                 }`}
@@ -476,9 +520,9 @@ export default function ReportesPage() {
                 </p>
 
                 <p className="mt-2 text-xs text-white/60">
-                  {reporte.resumen.margenNeto.toFixed(
-                    1
-                  )}
+                  {Number(
+                    reporte.resumen.margenNeto ?? 0
+                  ).toFixed(1)}
                   % margen neto
                 </p>
               </div>
@@ -929,11 +973,11 @@ export default function ReportesPage() {
 
               <div className="mt-7 space-y-6">
 
-                {reporte.productos.map(
+                {(reporte.productos ?? []).map(
                   (producto) => {
 
                     const porcentaje =
-                      (producto.cantidad /
+                      (Number(producto.cantidad ?? 0) /
                         maxProducto) *
                       100;
 
@@ -998,7 +1042,7 @@ export default function ReportesPage() {
                   }
                 )}
 
-                {reporte.productos.length === 0 && (
+                {(reporte.productos ?? []).length === 0 && (
                   <p className="text-[#737A68]">
                     No hay productos vendidos
                     en este periodo.
@@ -1030,7 +1074,7 @@ export default function ReportesPage() {
 
                 <div className="mt-6 space-y-4">
 
-                  {reporte.metodosPago.map(
+                  {(reporte.metodosPago ?? []).map(
                     (metodo) => (
 
                       <div
@@ -1063,7 +1107,7 @@ export default function ReportesPage() {
                     )
                   )}
 
-                  {reporte.metodosPago.length === 0 && (
+                  {(reporte.metodosPago ?? []).length === 0 && (
                     <p className="text-[#737A68]">
                       No hay ventas en el periodo.
                     </p>
@@ -1088,7 +1132,7 @@ export default function ReportesPage() {
 
                 <div className="mt-6 space-y-4">
 
-                  {reporte.gastosCategoria.map(
+                  {(reporte.gastosCategoria ?? []).map(
                     (categoria) => (
 
                       <div
@@ -1133,7 +1177,7 @@ export default function ReportesPage() {
                     )
                   )}
 
-                  {reporte.gastosCategoria.length ===
+                  {(reporte.gastosCategoria ?? []).length ===
                     0 && (
                     <p className="text-[#737A68]">
                       No hay salidas registradas
